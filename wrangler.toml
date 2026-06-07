@@ -1,0 +1,25 @@
+name = "auth-sync-consumer"
+main = "src/index.ts"
+compatibility_date = "2026-06-07"
+compatibility_flags = ["nodejs_compat"]
+
+[[queues.consumers]]
+queue = "auth-db-sync-queue"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[observability]
+enabled = true
+
+[observability.logs]
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 0.01
+
+[vars]
+SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+
+# For production: set SUPABASE_SERVICE_ROLE_KEY via `wrangler secret put`
+# For local dev: override SUPABASE_URL and set SUPABASE_SERVICE_ROLE_KEY in .dev.vars
