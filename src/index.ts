@@ -77,16 +77,6 @@ function dbClient(env: Env) {
   return { upsert, remove };
 }
 
-const ROLE_MAP: Record<string, string> = {
-  owner: 'company_admin',
-  admin: 'company_admin',
-  member: 'recruiter',
-};
-
-function mapRole(ssoRole: string): string {
-  return ROLE_MAP[ssoRole] || 'recruiter';
-}
-
 export default {
   async queue(batch: MessageBatch<SyncEvent>, env: Env): Promise<void> {
     const db = dbClient(env);
@@ -123,7 +113,7 @@ export default {
             await db.upsert('organization_members', {
               user_id: payload.user_id as string,
               organization_id: payload.organization_id as string,
-              role: mapRole(roles[0]),
+              role: roles[0] || 'member',
               status: (payload.status as string) || 'active',
               updated_at: new Date().toISOString(),
             }, 'user_id,organization_id');
