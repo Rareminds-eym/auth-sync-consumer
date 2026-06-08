@@ -78,6 +78,14 @@ function dbClient(env: Env) {
 }
 
 export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === '/health' && request.method === 'GET') {
+      return Response.json({ status: 'ok' });
+    }
+    return new Response('Not Found', { status: 404 });
+  },
+
   async queue(batch: MessageBatch<SyncEvent>, env: Env): Promise<void> {
     const db = dbClient(env);
 
