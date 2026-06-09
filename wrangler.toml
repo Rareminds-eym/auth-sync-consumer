@@ -1,12 +1,7 @@
-name = "auth-sync-consumer"
+name = "auth-sync-consumer-dev"
 main = "src/index.ts"
 compatibility_date = "2026-05-28"
 compatibility_flags = ["nodejs_compat"]
-
-[[queues.consumers]]
-queue = "auth-db-sync-queue"
-max_batch_size = 10
-max_batch_timeout = 5
 
 [dev]
 port = 8791
@@ -21,8 +16,79 @@ head_sampling_rate = 1
 enabled = true
 head_sampling_rate = 0.01
 
+# ============================================================================
+# DEV — wrangler deploy (default, no --env flag)
+# Deploys as: auth-sync-consumer-dev
+# ============================================================================
+
+[[queues.consumers]]
+queue = "auth-db-sync-queue-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+
 [vars]
+ENVIRONMENT = "dev"
+# ⚠️ Replace with dev app Supabase project URL
+SUPABASE_URL = "https://<DEV_APP_SUPABASE_PROJECT>.supabase.co"
+
+# For dev: set SUPABASE_SERVICE_ROLE_KEY via `wrangler secret put`
+# For local dev: override SUPABASE_URL and set SUPABASE_SERVICE_ROLE_KEY in .dev.vars
+
+# ============================================================================
+# STAGING — wrangler deploy --env staging
+# Deploys as: auth-sync-consumer-staging
+# ============================================================================
+
+[env.staging]
+name = "auth-sync-consumer-staging"
+
+[[env.staging.queues.consumers]]
+queue = "auth-db-sync-queue-staging"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+# ⚠️ Replace with staging app Supabase project URL
+SUPABASE_URL = "https://staging-app-supabase.supabase.co"
+
+# For staging: set SUPABASE_SERVICE_ROLE_KEY via `wrangler secret put --env staging`
+
+# ============================================================================
+# DEMO — wrangler deploy --env demo
+# Deploys as: auth-sync-consumer-demo
+# ============================================================================
+
+[env.demo]
+name = "auth-sync-consumer-demo"
+
+[[env.demo.queues.consumers]]
+queue = "auth-db-sync-queue-demo"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[env.demo.vars]
+ENVIRONMENT = "demo"
+# ⚠️ Replace with demo app Supabase project URL
+SUPABASE_URL = "https://demo-app-supabase.supabase.co"
+
+# For demo: set SUPABASE_SERVICE_ROLE_KEY via `wrangler secret put --env demo`
+
+# ============================================================================
+# PRODUCTION — wrangler deploy --env production
+# Deploys as: auth-sync-consumer-production
+# ============================================================================
+
+[env.production]
+name = "auth-sync-consumer-production"
+
+[[env.production.queues.consumers]]
+queue = "auth-db-sync-queue"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[env.production.vars]
+ENVIRONMENT = "production"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # For production: set SUPABASE_SERVICE_ROLE_KEY via `wrangler secret put`
-# For local dev: override SUPABASE_URL and set SUPABASE_SERVICE_ROLE_KEY in .dev.vars
