@@ -98,6 +98,7 @@ export default {
             await db.upsert('users', {
               id: payload.id as string,
               email: payload.email as string,
+              user_metadata: (payload.user_metadata as Record<string, unknown>) ?? {},
             }, 'id');
             break;
 
