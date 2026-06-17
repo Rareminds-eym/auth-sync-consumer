@@ -125,6 +125,12 @@ export default {
               status: (payload.status as string) || 'active',
               updated_at: new Date().toISOString(),
             }, 'user_id,organization_id');
+            // Also set the user's primary organizationId so college admin
+            // endpoints (curriculum, attendance, etc.) can resolve it.
+            await db.upsert('users', {
+              id: payload.user_id as string,
+              organizationId: payload.organization_id as string,
+            }, 'id');
             break;
           }
 
