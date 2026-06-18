@@ -95,12 +95,30 @@ export default {
 
         switch (type) {
           case 'user.created':
-            await db.upsert('users', {
+          case 'user.updated': {
+            if (!payload.id) {
+              console.error(`[auth-sync-consumer] Missing user ID in ${type} event. Payload:`, payload);
+              break; // Breaks switch, proceeds to msg.ack()
+            }
+            const userMetadata = (payload.user_metadata as Record<string, unknown>) ?? {};
+            
+            const updatePayload: Record<string, unknown> = {
               id: payload.id as string,
               email: payload.email as string,
-              user_metadata: (payload.user_metadata as Record<string, unknown>) ?? {},
-            }, 'id');
+              user_metadata: userMetadata,
+            };
+
+            if (userMetadata.first_name !== undefined) {
+              updatePayload.firstName = userMetadata.first_name;
+            }
+            if (userMetadata.last_name !== undefined) {
+              updatePayload.lastName = userMetadata.last_name;
+            }
+
+            await db.upsert('users', updatePayload, 'id');
+            console.log(`[auth-sync-consumer] Successfully synced ${type} for user ${payload.id}`);
             break;
+          }
 
           case 'user.email_verified':
             break;
