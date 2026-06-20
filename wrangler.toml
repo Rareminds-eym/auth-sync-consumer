@@ -2,6 +2,7 @@ name = "auth-sync-consumer-dev"
 main = "src/index.ts"
 compatibility_date = "2026-05-28"
 compatibility_flags = ["nodejs_compat"]
+account_id = "d10c2b1a3d702c710a036bc5a6d0902e"
 
 [dev]
 port = 8791
@@ -83,7 +84,7 @@ SUPABASE_URL = "https://demo-app-supabase.supabase.co"
 name = "auth-sync-consumer-production"
 
 [[env.production.queues.consumers]]
-queue = "auth-db-sync-queue"
+queue = "auth-db-sync-queue-production"
 max_batch_size = 10
 max_batch_timeout = 5
 
