@@ -6,9 +6,6 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "deploy:production": "wrangler deploy --env production",
-    "deploy:staging": "wrangler deploy --env staging",
-    "deploy:demo": "wrangler deploy --env demo",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
