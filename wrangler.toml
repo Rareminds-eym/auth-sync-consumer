@@ -3,11 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2026-05-28"
 compatibility_flags = ["nodejs_compat"]
 
-[[queues.consumers]]
-queue = "auth-db-sync-queue"
-max_batch_size = 10
-max_batch_timeout = 5
-
 [dev]
 port = 8791
 
@@ -21,8 +16,13 @@ head_sampling_rate = 1
 enabled = true
 head_sampling_rate = 0.01
 
+[[queues.consumers]]
+queue = "auth-db-sync-queue"
+max_batch_size = 10
+max_batch_timeout = 5
+
 [vars]
+ENVIRONMENT = "production"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
-# For production: set SUPABASE_SERVICE_ROLE_KEY via `wrangler secret put`
-# For local dev: override SUPABASE_URL and set SUPABASE_SERVICE_ROLE_KEY in .dev.vars
+# Set SUPABASE_SERVICE_ROLE_KEY via `wrangler secret put`

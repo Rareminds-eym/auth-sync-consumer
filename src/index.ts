@@ -95,11 +95,30 @@ export default {
 
         switch (type) {
           case 'user.created':
-            await db.upsert('users', {
+          case 'user.updated': {
+            if (!payload.id) {
+              console.error(`[auth-sync-consumer] Missing user ID in ${type} event. Payload:`, payload);
+              break; // Breaks switch, proceeds to msg.ack()
+            }
+            const userMetadata = (payload.user_metadata as Record<string, unknown>) ?? {};
+            
+            const updatePayload: Record<string, unknown> = {
               id: payload.id as string,
               email: payload.email as string,
-            }, 'id');
+              user_metadata: userMetadata,
+            };
+
+            if (userMetadata.first_name !== undefined) {
+              updatePayload.firstName = userMetadata.first_name;
+            }
+            if (userMetadata.last_name !== undefined) {
+              updatePayload.lastName = userMetadata.last_name;
+            }
+
+            await db.upsert('users', updatePayload, 'id');
+            console.log(`[auth-sync-consumer] Successfully synced ${type} for user ${payload.id}`);
             break;
+          }
 
           case 'user.email_verified':
             break;
@@ -125,6 +144,12 @@ export default {
               status: (payload.status as string) || 'active',
               updated_at: new Date().toISOString(),
             }, 'user_id,organization_id');
+            // Also set the user's primary organizationId so college admin
+            // endpoints (curriculum, attendance, etc.) can resolve it.
+            await db.upsert('users', {
+              id: payload.user_id as string,
+              organizationId: payload.organization_id as string,
+            }, 'id');
             break;
           }
 
