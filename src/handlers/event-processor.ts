@@ -115,12 +115,18 @@ export async function processMessage(
       ? err.issues.map(i => `${i.path.join('.')}: ${i.message}`)
       : undefined;
 
+    const isValidationError = err instanceof z.ZodError;
+
     console.error(`[event-processor] Message failed`, JSON.stringify({
       error: errorString,
       type: msg.body.type,
       zodIssues,
     }));
 
-    msg.retry();
+    if (isValidationError) {
+      msg.ack();
+    } else {
+      msg.retry();
+    }
   }
 }
