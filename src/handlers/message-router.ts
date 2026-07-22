@@ -34,9 +34,8 @@ export function sortMessagesByDependency(
 /**
  * Process messages in dependency order with sequential processing
  * 1. User/Org events first (sequential to catch FK errors early)
- * 2. Small delay to ensure DB commits are visible
- * 3. Membership events second (sequential)
- * 4. Other events last (sequential)
+ * 2. Membership events second (sequential)
+ * 3. Other events last (sequential)
  * 
  * ponytail: Sequential processing makes errors easier to debug than parallel.
  * Performance impact is minimal for typical batch sizes (<100 messages).
@@ -54,11 +53,6 @@ export async function processMessagesInOrder(
   // Errors handled inside processMessage (log + retry), no need to catch here
   for (const msg of userOrgMessages) {
     await processMessage(msg, db);
-  }
-  
-  // ponytail: Delay to ensure DB commits are visible for FK constraints
-  if (userOrgMessages.length > 0 && membershipMessages.length > 0) {
-    await new Promise(resolve => setTimeout(resolve, 100));
   }
   
   // Then process memberships (sequential)

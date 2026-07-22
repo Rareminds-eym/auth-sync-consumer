@@ -39,6 +39,7 @@ export async function processMessage(
       }
 
       case 'user.email_verified':
+        console.log(`[event-processor] Skipping user.email_verified — no action needed`);
         break;
 
       case 'user.deleted': {
@@ -97,7 +98,7 @@ export async function processMessage(
       }
 
       default:
-        console.warn(`[event-processor] Unknown event type: ${type}`);
+        throw new Error(`Unknown event type: ${type}`);
     }
 
     msg.ack();

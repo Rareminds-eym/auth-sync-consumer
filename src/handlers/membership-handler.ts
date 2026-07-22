@@ -89,12 +89,13 @@ async function handleLearnerOrgAssignment(
       learnerUpdate.school_id = payload.organization_id;
     } else if (orgType === 'college') {
       learnerUpdate.college_id = payload.organization_id;
-    } else {
-      learnerUpdate.college_id = payload.organization_id;
     }
+    // recruiter and unknown org types → skip school_id/college_id assignment
 
-    await db.update('learners', { user_id: `eq.${payload.user_id}` }, learnerUpdate);
-    console.log(`[membership-handler] Updated learner ${orgType ?? 'college'}_id`);
+    if (Object.keys(learnerUpdate).length > 0) {
+      await db.update('learners', { user_id: `eq.${payload.user_id}` }, learnerUpdate);
+      console.log(`[membership-handler] Set learner ${orgType}_id = ${payload.organization_id}`);
+    }
   } catch (err) {
     console.warn(`[membership-handler] Could not update learner org fields:`, err);
     throw err;
@@ -108,6 +109,9 @@ export async function handleMembershipRemoved(
   await db.remove('organization_members', {
     user_id: `eq.${payload.user_id}`,
     organization_id: `eq.${payload.organization_id}`,
+  });
+  await db.update('users', { id: `eq.${payload.user_id}` }, {
+    organizationId: null,
   });
   console.log(`[membership-handler] ✅ Removed membership user: ${payload.user_id}, org: ${payload.organization_id}`);
 }

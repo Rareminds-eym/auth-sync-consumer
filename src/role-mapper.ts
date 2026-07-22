@@ -41,10 +41,3 @@ export function mapRolesToOrgMemberRole(ssoRoles: string[]): 'owner' | 'admin' |
   return 'member';
 }
 
-/**
- * Get the primary role from an array of SSO roles
- * Returns the first role, or 'member' if empty
- */
-export function getPrimaryRole(ssoRoles: string[]): string {
-  return ssoRoles?.[0] || 'member';
-}

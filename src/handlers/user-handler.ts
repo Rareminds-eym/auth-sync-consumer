@@ -10,10 +10,10 @@ export async function handleUserCreatedOrUpdated(
 
   const updatePayload: Record<string, unknown> = {
     id: payload.id,
-    user_metadata: userMetadata,
   };
 
   if (payload.email !== undefined) updatePayload.email = payload.email;
+  if (payload.user_metadata !== undefined) updatePayload.user_metadata = userMetadata;
 
   if (userMetadata.firstName !== undefined) {
     updatePayload.firstName = userMetadata.firstName;
