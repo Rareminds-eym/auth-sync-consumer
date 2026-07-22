@@ -15,15 +15,15 @@ export async function handleUserCreatedOrUpdated(
   if (payload.email !== undefined) updatePayload.email = payload.email;
   if (payload.user_metadata !== undefined) updatePayload.user_metadata = userMetadata;
 
-  if (userMetadata.firstName !== undefined) {
+  if (userMetadata.firstName != null) {
     updatePayload.firstName = userMetadata.firstName;
-  } else if (userMetadata.first_name !== undefined) {
+  } else if (userMetadata.first_name != null) {
     updatePayload.firstName = userMetadata.first_name;
   }
 
-  if (userMetadata.lastName !== undefined) {
+  if (userMetadata.lastName != null) {
     updatePayload.lastName = userMetadata.lastName;
-  } else if (userMetadata.last_name !== undefined) {
+  } else if (userMetadata.last_name != null) {
     updatePayload.lastName = userMetadata.last_name;
   }
 

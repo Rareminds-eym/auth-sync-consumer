@@ -19,6 +19,7 @@ import {
   OrganizationUpdatedPayload,
   MembershipCreatedPayload,
   MembershipRoleChangedPayload,
+  MembershipStatusChangedPayload,
   MembershipRemovedPayload,
   SubscriptionCreatedPayload,
   SubscriptionUpdatedPayload,
@@ -42,8 +43,12 @@ export async function processMessage(
 
       case 'user.email_verified': {
         const parsed = UserEmailVerifiedPayload.parse(payload);
+        const rows = await db.select<{ metadata?: Record<string, unknown> }>(
+          'users', { id: `eq.${parsed.user_id}` }, 'metadata'
+        );
+        const existingMetadata = rows[0]?.metadata ?? {};
         await db.update('users', { id: `eq.${parsed.user_id}` }, {
-          metadata: { is_email_verified: true },
+          metadata: { ...existingMetadata, is_email_verified: true },
         });
         console.log(`[event-processor] ✅ Synced user.email_verified for ${parsed.user_id}`);
         break;
@@ -75,6 +80,12 @@ export async function processMessage(
 
       case 'membership.role_changed': {
         const parsed = MembershipRoleChangedPayload.parse(payload);
+        await handleMembershipCreatedOrRoleChanged(parsed, db);
+        break;
+      }
+
+      case 'membership.status_changed': {
+        const parsed = MembershipStatusChangedPayload.parse(payload);
         await handleMembershipCreatedOrRoleChanged(parsed, db);
         break;
       }

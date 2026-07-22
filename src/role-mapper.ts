@@ -39,7 +39,6 @@ export const LEARNER_SSO_ROLES = new Set([
   'teacher',
   'college_educator',
   'school_educator',
-  'member',
 ]);
 
 /**

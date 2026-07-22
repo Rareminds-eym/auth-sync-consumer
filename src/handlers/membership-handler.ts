@@ -31,7 +31,7 @@ export async function handleMembershipCreatedOrRoleChanged(
   } catch (err) {
     const errorString = err instanceof Error ? err.message : String(err);
 
-    const fkColumnMatch = errorString.match(/Key\s*\((\w+)\)\s*=/);
+    const fkColumnMatch = errorString.match(/\((\w+)\)\s*=/);
     const isFKViolation = errorString.includes('23503') || errorString.includes('foreign key constraint');
 
     if (isFKViolation && fkColumnMatch) {

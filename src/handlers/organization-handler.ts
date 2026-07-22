@@ -48,7 +48,8 @@ export async function handleOrganizationUpdated(
 
   const updatePayload: Record<string, unknown> = {};
 
-  if (metadata.name !== undefined) updatePayload.name = metadata.name;
+  if (payload.name !== undefined) updatePayload.name = payload.name;
+  else if (metadata.name !== undefined) updatePayload.name = metadata.name;
   if (metadata.organization_type !== undefined) updatePayload.organization_type = metadata.organization_type;
   if (metadata.email !== undefined) updatePayload.email = metadata.email;
   if (metadata.phone !== undefined) updatePayload.phone = metadata.phone;

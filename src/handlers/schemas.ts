@@ -28,6 +28,7 @@ export type OrganizationCreatedPayload = z.infer<typeof OrganizationCreatedPaylo
 
 export const OrganizationUpdatedPayload = z.object({
   id: z.string(),
+  name: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type OrganizationUpdatedPayload = z.infer<typeof OrganizationUpdatedPayload>;
@@ -44,6 +45,9 @@ export type MembershipCreatedPayload = z.infer<typeof MembershipCreatedPayload>;
 
 export const MembershipRoleChangedPayload = MembershipPayload;
 export type MembershipRoleChangedPayload = z.infer<typeof MembershipRoleChangedPayload>;
+
+export const MembershipStatusChangedPayload = MembershipPayload;
+export type MembershipStatusChangedPayload = z.infer<typeof MembershipStatusChangedPayload>;
 
 export const MembershipRemovedPayload = z.object({
   user_id: z.string(),
