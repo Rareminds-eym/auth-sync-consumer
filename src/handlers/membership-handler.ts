@@ -1,4 +1,4 @@
-import { mapRolesToOrgMemberRole } from '../role-mapper';
+import { mapRolesToOrgMemberRole, LEARNER_SSO_ROLES } from '../role-mapper';
 import { DbClient } from './types';
 import { MembershipCreatedPayload, MembershipRemovedPayload } from './schemas';
 
@@ -23,7 +23,7 @@ export async function handleMembershipCreatedOrRoleChanged(
       organizationId: payload.organization_id,
     });
 
-    if (roles.includes('learner')) {
+    if (roles.some(r => LEARNER_SSO_ROLES.has(r))) {
       await handleLearnerOrgAssignment(payload, db);
     }
 
@@ -110,8 +110,16 @@ export async function handleMembershipRemoved(
     user_id: `eq.${payload.user_id}`,
     organization_id: `eq.${payload.organization_id}`,
   });
+
+  const remaining = await db.select<{ organization_id: string }>(
+    'organization_members',
+    { user_id: `eq.${payload.user_id}` },
+    'organization_id',
+  );
+
   await db.update('users', { id: `eq.${payload.user_id}` }, {
-    organizationId: null,
+    organizationId: remaining[0]?.organization_id ?? null,
   });
+
   console.log(`[membership-handler] ✅ Removed membership user: ${payload.user_id}, org: ${payload.organization_id}`);
 }

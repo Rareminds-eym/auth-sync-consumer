@@ -12,6 +12,11 @@ export const UserDeletedPayload = z.object({
 });
 export type UserDeletedPayload = z.infer<typeof UserDeletedPayload>;
 
+export const UserEmailVerifiedPayload = z.object({
+  user_id: z.string(),
+});
+export type UserEmailVerifiedPayload = z.infer<typeof UserEmailVerifiedPayload>;
+
 export const OrganizationCreatedPayload = z.object({
   id: z.string(),
   name: z.string(),
@@ -50,7 +55,7 @@ export const SubscriptionCreatedPayload = z.object({
   id: z.string(),
   user_id: z.string(),
   organization_id: z.string().nullable().optional(),
-  plan_id: z.string(),
+  plan_id: z.string().optional(),
   plan_code: z.string(),
   plan_type: z.string().optional(),
   plan_amount: z.number().optional(),

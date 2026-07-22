@@ -31,6 +31,12 @@ export async function handleUserCreatedOrUpdated(
     updatePayload.role = userMetadata.role;
   }
 
+  if (userMetadata.contact_number !== undefined) {
+    updatePayload.phone = userMetadata.contact_number;
+  } else if (userMetadata.phone !== undefined) {
+    updatePayload.phone = userMetadata.phone;
+  }
+
   await db.upsert('users', updatePayload, 'id');
   console.log(`[user-handler] ✅ Synced ${eventType} for user ${payload.id}`);
 }

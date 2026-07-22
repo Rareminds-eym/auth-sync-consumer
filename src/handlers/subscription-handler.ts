@@ -1,5 +1,9 @@
 import { DbClient } from './types';
-import { SubscriptionCreatedPayload, SubscriptionCancelledOrExpiredPayload } from './schemas';
+import {
+  SubscriptionCreatedPayload,
+  SubscriptionUpdatedPayload,
+  SubscriptionCancelledOrExpiredPayload,
+} from './schemas';
 
 function safeParseJSON(value: string, fallback: unknown[]): unknown[] {
   try {
@@ -10,16 +14,15 @@ function safeParseJSON(value: string, fallback: unknown[]): unknown[] {
   }
 }
 
-export async function handleSubscriptionCreatedOrUpdated(
+export async function handleSubscriptionCreated(
   payload: SubscriptionCreatedPayload,
   db: DbClient,
-  eventType: 'subscription.created' | 'subscription.updated'
 ): Promise<void> {
   const subPayload: Record<string, unknown> = {
     id: payload.id,
     user_id: payload.user_id,
     organization_id: payload.organization_id ?? null,
-    plan_id: payload.plan_id,
+    plan_id: payload.plan_id ?? null,
     plan_code: payload.plan_code,
     plan_name: payload.plan_type ?? null,
     plan_type: payload.plan_type ?? null,
@@ -44,7 +47,49 @@ export async function handleSubscriptionCreatedOrUpdated(
   };
 
   await db.upsert('subscription_cache', subPayload, 'id');
-  console.log(`[subscription-handler] ✅ Synced ${eventType} for subscription ${payload.id}`);
+  console.log(`[subscription-handler] ✅ Synced subscription.created for ${payload.id}`);
+}
+
+export async function handleSubscriptionUpdated(
+  payload: SubscriptionUpdatedPayload,
+  db: DbClient,
+): Promise<void> {
+  const subPayload: Record<string, unknown> = {};
+
+  if (payload.user_id !== undefined) subPayload.user_id = payload.user_id;
+  if (payload.organization_id !== undefined) subPayload.organization_id = payload.organization_id;
+  if (payload.plan_id !== undefined) subPayload.plan_id = payload.plan_id;
+  if (payload.plan_code !== undefined) subPayload.plan_code = payload.plan_code;
+  if (payload.plan_type !== undefined) {
+    subPayload.plan_type = payload.plan_type;
+    subPayload.plan_name = payload.plan_type;
+  }
+  if (payload.plan_amount !== undefined) subPayload.plan_amount = payload.plan_amount;
+  if (payload.billing_cycle !== undefined) subPayload.billing_cycle = payload.billing_cycle;
+  if (payload.status !== undefined) subPayload.status = payload.status;
+  if (payload.features !== undefined) {
+    subPayload.features = Array.isArray(payload.features)
+      ? payload.features
+      : typeof payload.features === 'string'
+        ? safeParseJSON(payload.features, [])
+        : [];
+  }
+  if (payload.subscription_start_date !== undefined) subPayload.subscription_start_date = payload.subscription_start_date;
+  if (payload.subscription_end_date !== undefined) subPayload.subscription_end_date = payload.subscription_end_date;
+  if (payload.is_organization_subscription !== undefined) {
+    subPayload.is_organization_subscription =
+      typeof payload.is_organization_subscription === 'string'
+        ? payload.is_organization_subscription === 'true'
+        : payload.is_organization_subscription;
+  }
+  if (payload.seat_count !== undefined) subPayload.seat_count = payload.seat_count;
+  if (payload.assigned_seats !== undefined) subPayload.assigned_seats = payload.assigned_seats;
+  if (payload.product_id !== undefined) subPayload.product_id = payload.product_id;
+
+  subPayload.auth_updated_at = payload.updated_at ?? new Date().toISOString();
+
+  await db.update('subscription_cache', { id: `eq.${payload.id}` }, subPayload);
+  console.log(`[subscription-handler] ✅ Synced subscription.updated for ${payload.id}`);
 }
 
 export async function handleSubscriptionCancelledOrExpired(

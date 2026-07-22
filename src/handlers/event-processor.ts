@@ -7,12 +7,14 @@ import {
   handleMembershipRemoved
 } from './membership-handler';
 import {
-  handleSubscriptionCreatedOrUpdated,
+  handleSubscriptionCreated,
+  handleSubscriptionUpdated,
   handleSubscriptionCancelledOrExpired
 } from './subscription-handler';
 import {
   UserCreatedPayload,
   UserDeletedPayload,
+  UserEmailVerifiedPayload,
   OrganizationCreatedPayload,
   OrganizationUpdatedPayload,
   MembershipCreatedPayload,
@@ -38,9 +40,14 @@ export async function processMessage(
         break;
       }
 
-      case 'user.email_verified':
-        console.log(`[event-processor] Skipping user.email_verified — no action needed`);
+      case 'user.email_verified': {
+        const parsed = UserEmailVerifiedPayload.parse(payload);
+        await db.update('users', { id: `eq.${parsed.user_id}` }, {
+          metadata: { is_email_verified: true },
+        });
+        console.log(`[event-processor] ✅ Synced user.email_verified for ${parsed.user_id}`);
         break;
+      }
 
       case 'user.deleted': {
         const parsed = UserDeletedPayload.parse(payload);
@@ -80,13 +87,13 @@ export async function processMessage(
 
       case 'subscription.created': {
         const parsed = SubscriptionCreatedPayload.parse(payload);
-        await handleSubscriptionCreatedOrUpdated(parsed, db, type);
+        await handleSubscriptionCreated(parsed, db);
         break;
       }
 
       case 'subscription.updated': {
         const parsed = SubscriptionUpdatedPayload.parse(payload);
-        await handleSubscriptionCreatedOrUpdated(parsed, db, type);
+        await handleSubscriptionUpdated(parsed, db);
         break;
       }
 
