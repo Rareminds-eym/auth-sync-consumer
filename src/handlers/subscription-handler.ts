@@ -1,6 +1,15 @@
 import { DbClient } from './types';
 import { SubscriptionCreatedPayload, SubscriptionCancelledOrExpiredPayload } from './schemas';
 
+function safeParseJSON(value: string, fallback: unknown[]): unknown[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function handleSubscriptionCreatedOrUpdated(
   payload: SubscriptionCreatedPayload,
   db: DbClient,
@@ -17,10 +26,17 @@ export async function handleSubscriptionCreatedOrUpdated(
     plan_amount: payload.plan_amount ?? 0,
     billing_cycle: payload.billing_cycle ?? null,
     status: payload.status ?? 'pending',
-    features: Array.isArray(payload.features) ? payload.features : (payload.features ? [payload.features] : []),
+    features: Array.isArray(payload.features)
+      ? payload.features
+      : typeof payload.features === 'string'
+        ? safeParseJSON(payload.features, [])
+        : [],
     subscription_start_date: payload.subscription_start_date ?? null,
     subscription_end_date: payload.subscription_end_date ?? null,
-    is_organization_subscription: payload.is_organization_subscription ?? false,
+    is_organization_subscription:
+      typeof payload.is_organization_subscription === 'string'
+        ? payload.is_organization_subscription === 'true'
+        : (payload.is_organization_subscription ?? false),
     seat_count: payload.seat_count ?? 1,
     assigned_seats: payload.assigned_seats ?? 0,
     product_id: payload.product_id ?? null,

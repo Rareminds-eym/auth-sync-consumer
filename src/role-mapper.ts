@@ -6,18 +6,29 @@
 
 // SSO roles that map to Skillpassport organization_members roles
 const SSO_TO_ORG_MEMBER_ROLE: Record<string, 'owner' | 'admin' | 'member'> = {
-  // Admin roles
+  // Super admin / owner
+  'super_admin': 'owner',
   'owner': 'owner',
+
+  // Admin roles
+  'rm_admin': 'admin',
+  'rm_manager': 'admin',
+  'company_admin': 'admin',
+  'university_admin': 'admin',
   'college_admin': 'admin',
   'school_admin': 'admin',
   'admin': 'admin',
-  
-  // Member roles (learners, regular members, etc.)
+
+  // Member roles
   'learner': 'member',
   'member': 'member',
   'student': 'member',
   'educator': 'member',
   'teacher': 'member',
+  'college_educator': 'member',
+  'school_educator': 'member',
+  'hr': 'member',
+  'recruiter': 'member',
 };
 
 /**
