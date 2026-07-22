@@ -97,6 +97,7 @@ async function handleLearnerOrgAssignment(
     console.log(`[membership-handler] Updated learner ${orgType ?? 'college'}_id`);
   } catch (err) {
     console.warn(`[membership-handler] Could not update learner org fields:`, err);
+    throw err;
   }
 }
 

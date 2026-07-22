@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const UserCreatedPayload = z.object({
   id: z.string(),
-  email: z.string(),
+  email: z.string().optional(),
   user_metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type UserCreatedPayload = z.infer<typeof UserCreatedPayload>;

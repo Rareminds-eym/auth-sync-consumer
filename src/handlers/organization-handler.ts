@@ -29,8 +29,8 @@ export async function handleOrganizationCreated(
   orgPayload.is_active = true;
   orgPayload.approval_status = 'approved';
   orgPayload.account_status = 'active';
-  orgPayload.recruitment_enabled = metadata.recruitment_enabled || false;
-  orgPayload.max_recruiters = metadata.max_recruiters || 10;
+  orgPayload.recruitment_enabled = metadata.recruitment_enabled ?? false;
+  orgPayload.max_recruiters = metadata.max_recruiters ?? 10;
 
   if (payload.created_by) {
     orgPayload.admin_id = payload.created_by;
@@ -62,10 +62,10 @@ export async function handleOrganizationUpdated(
   if (metadata.website) updatePayload.website = metadata.website;
   if (metadata.established_year) updatePayload.established_year = metadata.established_year;
   if (metadata.recruitment_enabled !== undefined) updatePayload.recruitment_enabled = metadata.recruitment_enabled;
-  if (metadata.max_recruiters) updatePayload.max_recruiters = metadata.max_recruiters;
+  if (metadata.max_recruiters !== undefined) updatePayload.max_recruiters = metadata.max_recruiters;
 
   updatePayload.updated_at = new Date().toISOString();
 
-  await db.upsert('organizations', updatePayload, 'id');
+  await db.update('organizations', { id: `eq.${payload.id}` }, updatePayload);
   console.log(`[org-handler] ✅ Synced organization update ${payload.id}`);
 }

@@ -17,7 +17,7 @@ export async function handleSubscriptionCreatedOrUpdated(
     plan_amount: payload.plan_amount ?? 0,
     billing_cycle: payload.billing_cycle ?? null,
     status: payload.status ?? 'pending',
-    features: payload.features ?? [],
+    features: Array.isArray(payload.features) ? payload.features : (payload.features ? [payload.features] : []),
     subscription_start_date: payload.subscription_start_date ?? null,
     subscription_end_date: payload.subscription_end_date ?? null,
     is_organization_subscription: payload.is_organization_subscription ?? false,
