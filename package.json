@@ -16,7 +16,5 @@
     "typescript": "^6.0.3",
     "wrangler": "^4.94.0"
   },
-  "dependencies": {
-    "zod": "^4.4.3"
-  }
+  "dependencies": {}
 }

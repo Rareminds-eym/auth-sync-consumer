@@ -2,8 +2,6 @@
  * Shared types for handlers
  */
 
-export type { DbClient } from '../lib/db-client';
-
 export type SyncEventType =
   | 'user.created'
   | 'user.updated'

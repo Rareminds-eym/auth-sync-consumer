@@ -3,7 +3,8 @@
  * Routes messages based on dependencies to avoid FK violations
  */
 
-import { DbClient, SyncEvent } from './types';
+import { Fetcher } from '@cloudflare/workers-types';
+import { SyncEvent } from './types';
 
 /**
  * Sort messages into dependency groups
@@ -42,8 +43,8 @@ export function sortMessagesByDependency(
  */
 export async function processMessagesInOrder(
   messages: Message<SyncEvent>[],
-  db: DbClient,
-  processMessage: (msg: Message<SyncEvent>, db: DbClient) => Promise<void>
+  binding: Fetcher,
+  processMessage: (msg: Message<SyncEvent>, binding: Fetcher) => Promise<void>
 ): Promise<void> {
   const [userOrgMessages, membershipMessages, otherMessages] = sortMessagesByDependency(messages);
   
@@ -52,16 +53,16 @@ export async function processMessagesInOrder(
   // Process user/org first (sequential)
   // Errors handled inside processMessage (log + retry), no need to catch here
   for (const msg of userOrgMessages) {
-    await processMessage(msg, db);
+    await processMessage(msg, binding);
   }
   
   // Then process memberships (sequential)
   for (const msg of membershipMessages) {
-    await processMessage(msg, db);
+    await processMessage(msg, binding);
   }
   
   // Other messages (sequential)
   for (const msg of otherMessages) {
-    await processMessage(msg, db);
+    await processMessage(msg, binding);
   }
 }

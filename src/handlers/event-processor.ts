@@ -1,143 +1,76 @@
-import { z } from 'zod';
-import { DbClient, SyncEvent } from './types';
-import { handleUserCreatedOrUpdated, handleUserDeleted } from './user-handler';
-import { handleOrganizationCreated, handleOrganizationUpdated } from './organization-handler';
-import {
-  handleMembershipCreatedOrRoleChanged,
-  handleMembershipRemoved
-} from './membership-handler';
-import {
-  handleSubscriptionCreated,
-  handleSubscriptionUpdated,
-  handleSubscriptionCancelledOrExpired
-} from './subscription-handler';
-import {
-  UserCreatedPayload,
-  UserDeletedPayload,
-  UserEmailVerifiedPayload,
-  OrganizationCreatedPayload,
-  OrganizationUpdatedPayload,
-  MembershipCreatedPayload,
-  MembershipRoleChangedPayload,
-  MembershipStatusChangedPayload,
-  MembershipRemovedPayload,
-  SubscriptionCreatedPayload,
-  SubscriptionUpdatedPayload,
-  SubscriptionCancelledOrExpiredPayload,
-} from './schemas';
+import { Fetcher } from '@cloudflare/workers-types';
+import { SyncEvent } from './types';
+import { syncUser, syncOrg, syncMembership, syncSubscription, SyncResult } from '../lib/sync-client';
+
+async function callSync(label: string, fn: () => Promise<SyncResult>, suffix: string) {
+  const result = await fn();
+  if (!result.success) {
+    if (result.retryable) throw new Error(result.error);
+    console.error(`[${label}] Non-retryable: ${result.error}`);
+    return;
+  }
+  console.log(`[${label}] ✅ ${suffix}`);
+}
 
 export async function processMessage(
   msg: Message<SyncEvent>,
-  db: DbClient
+  binding: Fetcher
 ): Promise<void> {
   try {
     const { type, payload } = msg.body;
 
     switch (type) {
       case 'user.created':
-      case 'user.updated': {
-        const parsed = UserCreatedPayload.parse(payload);
-        await handleUserCreatedOrUpdated(parsed, db, type);
+        await callSync('user', () => syncUser(binding, 'created', payload), 'Synced user.created');
         break;
-      }
-
-      case 'user.email_verified': {
-        const parsed = UserEmailVerifiedPayload.parse(payload);
-        const rows = await db.select<{ metadata?: Record<string, unknown> }>(
-          'users', { id: `eq.${parsed.user_id}` }, 'metadata'
-        );
-        const existingMetadata = rows[0]?.metadata ?? {};
-        await db.update('users', { id: `eq.${parsed.user_id}` }, {
-          metadata: { ...existingMetadata, is_email_verified: true },
-        });
-        console.log(`[event-processor] ✅ Synced user.email_verified for ${parsed.user_id}`);
+      case 'user.updated':
+        await callSync('user', () => syncUser(binding, 'updated', payload), 'Synced user.updated');
         break;
-      }
-
-      case 'user.deleted': {
-        const parsed = UserDeletedPayload.parse(payload);
-        await handleUserDeleted(parsed, db);
+      case 'user.email_verified':
+        await callSync('user', () => syncUser(binding, 'updated', payload), 'Synced email_verified');
         break;
-      }
-
-      case 'organization.created': {
-        const parsed = OrganizationCreatedPayload.parse(payload);
-        await handleOrganizationCreated(parsed, db);
+      case 'user.deleted':
+        await callSync('user', () => syncUser(binding, 'deleted', payload), 'Deleted user');
         break;
-      }
-
-      case 'organization.updated': {
-        const parsed = OrganizationUpdatedPayload.parse(payload);
-        await handleOrganizationUpdated(parsed, db);
+      case 'organization.created':
+        await callSync('org', () => syncOrg(binding, 'created', payload), 'Synced org.created');
         break;
-      }
-
-      case 'membership.created': {
-        const parsed = MembershipCreatedPayload.parse(payload);
-        await handleMembershipCreatedOrRoleChanged(parsed, db);
+      case 'organization.updated':
+        await callSync('org', () => syncOrg(binding, 'updated', payload), 'Synced org.updated');
         break;
-      }
-
-      case 'membership.role_changed': {
-        const parsed = MembershipRoleChangedPayload.parse(payload);
-        await handleMembershipCreatedOrRoleChanged(parsed, db);
+      case 'membership.created':
+        await callSync('membership', () => syncMembership(binding, 'created', payload), 'Synced membership.created');
         break;
-      }
-
-      case 'membership.status_changed': {
-        const parsed = MembershipStatusChangedPayload.parse(payload);
-        await handleMembershipCreatedOrRoleChanged(parsed, db);
+      case 'membership.role_changed':
+        await callSync('membership', () => syncMembership(binding, 'role_changed', payload), 'Synced role_changed');
         break;
-      }
-
-      case 'membership.removed': {
-        const parsed = MembershipRemovedPayload.parse(payload);
-        await handleMembershipRemoved(parsed, db);
+      case 'membership.status_changed':
+        await callSync('membership', () => syncMembership(binding, 'status_changed', payload), 'Synced status_changed');
         break;
-      }
-
-      case 'subscription.created': {
-        const parsed = SubscriptionCreatedPayload.parse(payload);
-        await handleSubscriptionCreated(parsed, db);
+      case 'membership.removed':
+        await callSync('membership', () => syncMembership(binding, 'removed', payload), 'Removed membership');
         break;
-      }
-
-      case 'subscription.updated': {
-        const parsed = SubscriptionUpdatedPayload.parse(payload);
-        await handleSubscriptionUpdated(parsed, db);
+      case 'subscription.created':
+        await callSync('subscription', () => syncSubscription(binding, 'created', payload), 'Synced sub.created');
         break;
-      }
-
+      case 'subscription.updated':
+        await callSync('subscription', () => syncSubscription(binding, 'updated', payload), 'Synced sub.updated');
+        break;
       case 'subscription.cancelled':
-      case 'subscription.expired': {
-        const parsed = SubscriptionCancelledOrExpiredPayload.parse(payload);
-        await handleSubscriptionCancelledOrExpired(parsed, db, type);
+        await callSync('subscription', () => syncSubscription(binding, 'cancelled', payload), 'Synced sub.cancelled');
         break;
-      }
-
+      case 'subscription.expired':
+        await callSync('subscription', () => syncSubscription(binding, 'expired', payload), 'Synced sub.expired');
+        break;
       default:
         throw new Error(`Unknown event type: ${type}`);
     }
 
     msg.ack();
   } catch (err) {
-    const errorString = err instanceof Error ? err.message : String(err);
-    const zodIssues = err instanceof z.ZodError
-      ? err.issues.map(i => `${i.path.join('.')}: ${i.message}`)
-      : undefined;
-
-    const isValidationError = err instanceof z.ZodError;
-
-    console.error(`[event-processor] Message failed`, JSON.stringify({
-      error: errorString,
-      type: msg.body.type,
-      zodIssues,
-    }));
-
-    if (isValidationError) {
-      msg.ack();
-    } else {
-      msg.retry();
-    }
+    const isRetryable = !(err instanceof TypeError);
+    console.error(`[event-processor] Message failed: ${err instanceof Error ? err.message : String(err)} type=${msg.body.type}`);
+    if (isRetryable) msg.retry();
+    else msg.ack();
   }
 }

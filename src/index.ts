@@ -1,14 +1,16 @@
 /**
  * Auth Sync Consumer Worker
- * Consumes sync events from SSO and syncs them to Skillpassport database
+ * Consumes sync events from SSO and syncs them to Skillpassport via HTTP service binding
  */
 
-import { Env, dbClient } from './lib/db-client';
+import { Fetcher } from '@cloudflare/workers-types';
 import { SyncEvent } from './handlers/types';
 import { processMessagesInOrder } from './handlers/message-router';
 import { processMessage } from './handlers/event-processor';
 
-export type { Env };
+export interface Env {
+  SKILLPASSPORT_SYNC: Fetcher;
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -29,8 +31,8 @@ export default {
       return;
     }
 
-    const db = dbClient(env);
+    const binding = env.SKILLPASSPORT_SYNC;
     // ponytail: batch.messages is readonly, spread to mutable array
-    await processMessagesInOrder([...batch.messages], db, processMessage);
+    await processMessagesInOrder([...batch.messages], binding, processMessage);
   },
 };
