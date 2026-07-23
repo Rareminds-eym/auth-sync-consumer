@@ -8,18 +8,31 @@ async function syncEndpoint(
   action: string,
   data: Record<string, unknown>
 ): Promise<SyncResult> {
-  const res = await fetch(`${baseUrl}${path}`, {
-    method: 'POST',
-    body: JSON.stringify({ action, data }),
-    headers: { 'Content-Type': 'application/json' },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${path}`, {
+      method: 'POST',
+      body: JSON.stringify({ action, data }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    return { success: false, retryable: true, error: `Fetch failed: ${err instanceof Error ? err.message : String(err)}` };
+  }
   if (!res.ok) {
-    const body = await res.json() as { error?: { code?: string; message?: string } };
-    const error = body?.error;
-    if (res.status === 404) return { success: false, retryable: true, error: error?.message || 'Not found' };
-    if (res.status === 400) return { success: false, retryable: false, error: error?.message || 'Bad request' };
-    if (res.status === 409) return { success: false, retryable: true, error: error?.message || 'Conflict' };
-    return { success: false, retryable: true, error: error?.message || 'Unknown error' };
+    let errorMessage = 'Unknown error';
+    let errorCode: string | undefined;
+    try {
+      const body = await res.json() as { error?: { code?: string; message?: string } };
+      errorCode = body?.error?.code;
+      errorMessage = body?.error?.message || `HTTP ${res.status}`;
+    } catch {
+      const text = await res.text();
+      errorMessage = text || `HTTP ${res.status}`;
+    }
+    if (res.status === 404) return { success: false, retryable: true, error: errorMessage };
+    if (res.status === 400) return { success: false, retryable: false, error: errorMessage };
+    if (res.status === 409) return { success: false, retryable: true, error: errorMessage };
+    return { success: false, retryable: true, error: errorMessage };
   }
   return { success: true };
 }
