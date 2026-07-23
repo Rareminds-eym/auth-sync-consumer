@@ -1,16 +1,14 @@
-import { Fetcher } from '@cloudflare/workers-types';
-
 export type SyncResult =
   | { success: true }
   | { success: false; retryable: boolean; error: string };
 
 async function syncEndpoint(
-  binding: Fetcher,
+  baseUrl: string,
   path: string,
   action: string,
   data: Record<string, unknown>
 ): Promise<SyncResult> {
-  const res = await binding.fetch(`https://internal${path}`, {
+  const res = await fetch(`${baseUrl}${path}`, {
     method: 'POST',
     body: JSON.stringify({ action, data }),
     headers: { 'Content-Type': 'application/json' },
@@ -27,33 +25,33 @@ async function syncEndpoint(
 }
 
 export function syncUser(
-  binding: Fetcher,
+  baseUrl: string,
   action: string,
   data: Record<string, unknown>
 ): Promise<SyncResult> {
-  return syncEndpoint(binding, '/sync/user', action, data);
+  return syncEndpoint(baseUrl, '/sync/user', action, data);
 }
 
 export function syncOrg(
-  binding: Fetcher,
+  baseUrl: string,
   action: string,
   data: Record<string, unknown>
 ): Promise<SyncResult> {
-  return syncEndpoint(binding, '/sync/org', action, data);
+  return syncEndpoint(baseUrl, '/sync/org', action, data);
 }
 
 export function syncMembership(
-  binding: Fetcher,
+  baseUrl: string,
   action: string,
   data: Record<string, unknown>
 ): Promise<SyncResult> {
-  return syncEndpoint(binding, '/sync/membership', action, data);
+  return syncEndpoint(baseUrl, '/sync/membership', action, data);
 }
 
 export function syncSubscription(
-  binding: Fetcher,
+  baseUrl: string,
   action: string,
   data: Record<string, unknown>
 ): Promise<SyncResult> {
-  return syncEndpoint(binding, '/sync/subscription', action, data);
+  return syncEndpoint(baseUrl, '/sync/subscription', action, data);
 }

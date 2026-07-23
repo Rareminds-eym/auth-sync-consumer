@@ -30,8 +30,4 @@ max_batch_timeout = 5
 
 [vars]
 ENVIRONMENT = "production"
-
-[[services]]
-binding = "SKILLPASSPORT_SYNC"
-service = "skillpassport-sync"
-environment = "production"
+SKILLPASSPORT_SYNC_URL = "https://fix-bulk-sync.skill-passport-portal-cwi.pages.dev"
