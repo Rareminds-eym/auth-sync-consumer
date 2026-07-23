@@ -21,7 +21,7 @@ export function sortMessagesByDependency(
     if (type === 'user.created' || type === 'user.updated' || 
         type === 'organization.created' || type === 'organization.updated') {
       userOrgMessages.push(msg);
-    } else if (type === 'membership.created' || type === 'membership.role_changed') {
+    } else if (type === 'membership.created' || type === 'membership.role_changed' || type === 'membership.status_changed') {
       membershipMessages.push(msg);
     } else {
       otherMessages.push(msg);
