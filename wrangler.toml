@@ -19,7 +19,7 @@ head_sampling_rate = 0.01
 [[queues.consumers]]
 queue = "auth-db-sync-queue"
 max_batch_size = 10
-max_batch_timeout = 1  # ponytail: Fast login sync (1s), ordering handled by Promise.all in consumer
+max_batch_timeout = 1  # Fast login sync (1s), messages processed sequentially in consumer
 max_retries = 3
 dead_letter_queue = "auth-db-sync-dlq"
 
@@ -28,6 +28,10 @@ queue = "auth-db-sync-dlq"
 max_batch_size = 10
 max_batch_timeout = 5
 
-[vars]
+[env.production]
+name = "auth-sync-consumer"
+
+[env.production.vars]
 ENVIRONMENT = "production"
-SKILLPASSPORT_SYNC_URL = "https://fix-bulk-sync.skill-passport-portal-cwi.pages.dev"
+SKILLPASSPORT_SYNC_URL = "https://skillpassport.rareminds.in"
+

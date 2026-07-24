@@ -6,24 +6,26 @@ async function syncEndpoint(
   baseUrl: string,
   path: string,
   action: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  secret: string
 ): Promise<SyncResult> {
   let res: Response;
   try {
     res = await fetch(`${baseUrl}${path}`, {
       method: 'POST',
       body: JSON.stringify({ action, data }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${secret}`,
+      },
     });
   } catch (err) {
     return { success: false, retryable: true, error: `Fetch failed: ${err instanceof Error ? err.message : String(err)}` };
   }
   if (!res.ok) {
     let errorMessage = 'Unknown error';
-    let errorCode: string | undefined;
     try {
       const body = await res.json() as { error?: { code?: string; message?: string } };
-      errorCode = body?.error?.code;
       errorMessage = body?.error?.message || `HTTP ${res.status}`;
     } catch {
       const text = await res.text();
@@ -40,31 +42,35 @@ async function syncEndpoint(
 export function syncUser(
   baseUrl: string,
   action: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  secret: string
 ): Promise<SyncResult> {
-  return syncEndpoint(baseUrl, '/sync/user', action, data);
+  return syncEndpoint(baseUrl, '/sync/user', action, data, secret);
 }
 
 export function syncOrg(
   baseUrl: string,
   action: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  secret: string
 ): Promise<SyncResult> {
-  return syncEndpoint(baseUrl, '/sync/org', action, data);
+  return syncEndpoint(baseUrl, '/sync/org', action, data, secret);
 }
 
 export function syncMembership(
   baseUrl: string,
   action: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  secret: string
 ): Promise<SyncResult> {
-  return syncEndpoint(baseUrl, '/sync/membership', action, data);
+  return syncEndpoint(baseUrl, '/sync/membership', action, data, secret);
 }
 
 export function syncSubscription(
   baseUrl: string,
   action: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  secret: string
 ): Promise<SyncResult> {
-  return syncEndpoint(baseUrl, '/sync/subscription', action, data);
+  return syncEndpoint(baseUrl, '/sync/subscription', action, data, secret);
 }

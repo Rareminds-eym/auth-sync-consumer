@@ -9,6 +9,7 @@ import { processMessage } from './handlers/event-processor';
 
 export interface Env {
   SKILLPASSPORT_SYNC_URL: string;
+  SYNC_API_SECRET: string;
 }
 
 export default {
@@ -31,6 +32,7 @@ export default {
     }
 
     const baseUrl = env.SKILLPASSPORT_SYNC_URL;
-    await processMessagesInOrder([...batch.messages], baseUrl, processMessage);
+    await processMessagesInOrder([...batch.messages], baseUrl, env.SYNC_API_SECRET, processMessage);
   },
 };
+

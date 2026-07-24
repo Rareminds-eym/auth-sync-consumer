@@ -1,67 +1,100 @@
 /**
  * Message Router for Sync Events
- * Routes messages based on dependencies to avoid FK violations
+ * Routes messages by FK dependency order to avoid constraint violations:
+ *   1. Entity creates/updates (users, orgs) — must exist before references
+ *   2. Dependent operations (memberships, subscriptions) — reference users/orgs
+ *   3. Destructive operations (user.deleted) — must run after dependents are cleaned up
  */
 
-import { SyncEvent } from './types';
+import { SyncEvent, SyncEventType } from './types';
 
 /**
- * Sort messages into dependency groups
- * Returns: [userOrg, membership, other]
+ * Sort messages into dependency groups using an exhaustive switch.
+ * Adding a new SyncEventType without handling it here produces a compile error.
+ *
+ * Returns: [entityMessages, dependentMessages, destructiveMessages]
  */
 export function sortMessagesByDependency(
   messages: Message<SyncEvent>[]
 ): [Message<SyncEvent>[], Message<SyncEvent>[], Message<SyncEvent>[]] {
-  const userOrgMessages: Message<SyncEvent>[] = [];
-  const membershipMessages: Message<SyncEvent>[] = [];
-  const otherMessages: Message<SyncEvent>[] = [];
-  
+  const entityMessages: Message<SyncEvent>[] = [];
+  const dependentMessages: Message<SyncEvent>[] = [];
+  const destructiveMessages: Message<SyncEvent>[] = [];
+
   for (const msg of messages) {
-    const type = msg.body.type;
-    if (type === 'user.created' || type === 'user.updated' || 
-        type === 'organization.created' || type === 'organization.updated') {
-      userOrgMessages.push(msg);
-    } else if (type === 'membership.created' || type === 'membership.role_changed' || type === 'membership.status_changed') {
-      membershipMessages.push(msg);
-    } else {
-      otherMessages.push(msg);
+    const type: SyncEventType = msg.body.type;
+    switch (type) {
+      // Group 1: Entity creates/updates — users and orgs must exist first
+      case 'user.created':
+      case 'user.updated':
+      case 'user.email_verified':
+      case 'organization.created':
+      case 'organization.updated':
+        entityMessages.push(msg);
+        break;
+
+      // Group 2: Dependent operations — these reference users/orgs via FK
+      case 'membership.created':
+      case 'membership.role_changed':
+      case 'membership.status_changed':
+      case 'membership.removed':
+      case 'subscription.created':
+      case 'subscription.updated':
+      case 'subscription.cancelled':
+      case 'subscription.expired':
+        dependentMessages.push(msg);
+        break;
+
+      // Group 3: Destructive — must run after dependents are cleaned up
+      case 'user.deleted':
+        destructiveMessages.push(msg);
+        break;
+
+      default: {
+        // Exhaustive check: compile error if a SyncEventType case is missing
+        const _exhaustive: never = type;
+        console.error(`[message-router] Unhandled event type: ${_exhaustive}`);
+      }
     }
   }
-  
-  return [userOrgMessages, membershipMessages, otherMessages];
+
+  return [entityMessages, dependentMessages, destructiveMessages];
 }
 
 /**
- * Process messages in dependency order with sequential processing
- * 1. User/Org events first (sequential to catch FK errors early)
- * 2. Membership events second (sequential)
- * 3. Other events last (sequential)
- * 
- * ponytail: Sequential processing makes errors easier to debug than parallel.
+ * Process messages in dependency order with sequential processing.
+ *   1. Entity creates/updates first (users, orgs)
+ *   2. Dependent operations second (memberships, subscriptions)
+ *   3. Destructive operations last (user.deleted)
+ *
+ * Sequential processing makes errors easier to debug than parallel.
  * Performance impact is minimal for typical batch sizes (<100 messages).
  */
 export async function processMessagesInOrder(
   messages: Message<SyncEvent>[],
   baseUrl: string,
-  processMessage: (msg: Message<SyncEvent>, baseUrl: string) => Promise<void>
+  secret: string,
+  processMessage: (msg: Message<SyncEvent>, baseUrl: string, secret: string) => Promise<void>
 ): Promise<void> {
-  const [userOrgMessages, membershipMessages, otherMessages] = sortMessagesByDependency(messages);
-  
-  console.log(`[message-router] Batch: ${userOrgMessages.length} user/org, ${membershipMessages.length} membership, ${otherMessages.length} other`);
-  
-  // Process user/org first (sequential)
-  // Errors handled inside processMessage (log + retry), no need to catch here
-  for (const msg of userOrgMessages) {
-    await processMessage(msg, baseUrl);
+  const [entityMessages, dependentMessages, destructiveMessages] = sortMessagesByDependency(messages);
+
+  console.log(
+    `[message-router] Batch: ${entityMessages.length} entity, ${dependentMessages.length} dependent, ${destructiveMessages.length} destructive`
+  );
+
+  // 1. Entity creates/updates — ensure users and orgs exist
+  for (const msg of entityMessages) {
+    await processMessage(msg, baseUrl, secret);
   }
-  
-  // Then process memberships (sequential)
-  for (const msg of membershipMessages) {
-    await processMessage(msg, baseUrl);
+
+  // 2. Dependent operations — memberships and subscriptions
+  for (const msg of dependentMessages) {
+    await processMessage(msg, baseUrl, secret);
   }
-  
-  // Other messages (sequential)
-  for (const msg of otherMessages) {
-    await processMessage(msg, baseUrl);
+
+  // 3. Destructive operations — user.deleted runs last
+  for (const msg of destructiveMessages) {
+    await processMessage(msg, baseUrl, secret);
   }
 }
+
