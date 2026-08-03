@@ -19,10 +19,19 @@ head_sampling_rate = 0.01
 [[queues.consumers]]
 queue = "auth-db-sync-queue"
 max_batch_size = 10
+max_batch_timeout = 1  # Fast login sync (1s), messages processed sequentially in consumer
+max_retries = 3
+dead_letter_queue = "auth-db-sync-dlq"
+
+[[queues.consumers]]
+queue = "auth-db-sync-dlq"
+max_batch_size = 10
 max_batch_timeout = 5
 
-[vars]
-ENVIRONMENT = "production"
-SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+[env.production]
+name = "auth-sync-consumer"
 
-# Set SUPABASE_SERVICE_ROLE_KEY via `wrangler secret put`
+[env.production.vars]
+ENVIRONMENT = "production"
+SKILLPASSPORT_SYNC_URL = "https://skillpassport.rareminds.in"
+
