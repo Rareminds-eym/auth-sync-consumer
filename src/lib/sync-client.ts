@@ -74,3 +74,12 @@ export function syncSubscription(
 ): Promise<SyncResult> {
   return syncEndpoint(baseUrl, '/sync/subscription', action, data, secret);
 }
+
+export function syncFaculty(
+  baseUrl: string,
+  action: string,
+  data: Record<string, unknown>,
+  secret: string
+): Promise<SyncResult> {
+  return syncEndpoint(baseUrl, '/sync/faculty', action, data, secret);
+}

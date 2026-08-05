@@ -1,5 +1,5 @@
 import { SyncEvent } from './types';
-import { syncUser, syncOrg, syncMembership, syncSubscription, SyncResult } from '../lib/sync-client';
+import { syncUser, syncOrg, syncMembership, syncSubscription, syncFaculty, SyncResult } from '../lib/sync-client';
 
 async function callSync(label: string, fn: () => Promise<SyncResult>, suffix: string) {
   const result = await fn();
@@ -61,6 +61,9 @@ export async function processMessage(
         break;
       case 'subscription.expired':
         await callSync('subscription', () => syncSubscription(baseUrl, 'expired', payload, secret), 'Synced sub.expired');
+        break;
+      case 'faculty.created':
+        await callSync('faculty', () => syncFaculty(baseUrl, 'created', payload, secret), 'Synced faculty.created');
         break;
       default:
         throw new Error(`Unknown event type: ${type}`);

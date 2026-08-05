@@ -16,7 +16,8 @@ export type SyncEventType =
   | 'subscription.created'
   | 'subscription.updated'
   | 'subscription.cancelled'
-  | 'subscription.expired';
+  | 'subscription.expired'
+  | 'faculty.created';
 
 export interface SyncEvent {
   type: SyncEventType;
