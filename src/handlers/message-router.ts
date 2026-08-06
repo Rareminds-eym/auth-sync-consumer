@@ -42,6 +42,7 @@ export function sortMessagesByDependency(
       case 'subscription.updated':
       case 'subscription.cancelled':
       case 'subscription.expired':
+      case 'faculty.created':
         dependentMessages.push(msg);
         break;
 
