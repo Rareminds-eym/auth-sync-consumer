@@ -28,6 +28,18 @@ queue = "auth-db-sync-dlq"
 max_batch_size = 10
 max_batch_timeout = 5
 
+[[queues.consumers]]
+queue = "lte-db-sync-queue"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "lte-db-sync-dlq"
+
+[[queues.consumers]]
+queue = "lte-db-sync-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+
 [env.production]
 name = "auth-sync-consumer"
 

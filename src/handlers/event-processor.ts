@@ -1,33 +1,74 @@
-import { SyncEvent } from './types';
-import { syncUser, syncOrg, syncMembership, syncSubscription, syncFaculty, SyncResult } from '../lib/sync-client';
+import { SyncEvent, SyncEventType } from './types';
+import { decodeEventBody } from './message-codec';
+import {
+  syncUser,
+  syncOrg,
+  syncMembership,
+  syncSubscription,
+  syncFaculty,
+} from '../lib/sso-sync-client';
+import { syncLte } from '../lib/lte/lte-sync-client';
+import { SyncResult } from '../lib/sync-result';
+
+export class RetryableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RetryableError';
+  }
+}
 
 async function callSync(label: string, fn: () => Promise<SyncResult>, suffix: string) {
   const result = await fn();
   if (!result.success) {
-    if (result.retryable) throw new Error(result.error);
+    if (result.retryable) throw new RetryableError(result.error);
     console.error(`[${label}] Non-retryable: ${result.error}`);
     return;
   }
   console.log(`[${label}] ✅ ${suffix}`);
 }
 
-export async function processMessage(
+/**
+ * Shared message lifecycle: decode the body, hand it to a pipeline handler,
+ * then ack or retry. A handler that throws `RetryableError` is retried;
+ * anything else is treated as non-retryable and acked (dropped).
+ */
+async function runMessage(
+  msg: Message<SyncEvent>,
+  handler: (type: SyncEventType, payload: Record<string, unknown>) => Promise<void>
+): Promise<void> {
+  let parsedType = 'unknown';
+  try {
+    const parsed = await decodeEventBody(msg.body);
+    if (!parsed || !parsed.type) {
+      console.warn('[event-processor] Dropping invalid or unparseable message body');
+      msg.ack();
+      return;
+    }
+    parsedType = parsed.type;
+    await handler(parsed.type, parsed.payload);
+    msg.ack();
+  } catch (err) {
+    const isRetryable = err instanceof RetryableError;
+    console.error(`[event-processor] Message failed: ${err instanceof Error ? err.message : String(err)} type=${parsedType}`);
+    if (isRetryable) msg.retry();
+    else msg.ack();
+  }
+}
+
+/** SSO pipeline — syncs auth-db events to the Skillpassport SSO sync API. */
+export async function processSsoMessage(
   msg: Message<SyncEvent>,
   baseUrl: string,
   secret: string
 ): Promise<void> {
-  try {
-    const { type, payload } = msg.body;
-
+  await runMessage(msg, async (type, payload) => {
     switch (type) {
       case 'user.created':
         await callSync('user', () => syncUser(baseUrl, 'created', payload, secret), 'Synced user.created');
         break;
       case 'user.updated':
-        await callSync('user', () => syncUser(baseUrl, 'updated', payload, secret), 'Synced user.updated');
-        break;
       case 'user.email_verified':
-        await callSync('user', () => syncUser(baseUrl, 'updated', payload, secret), 'Synced email_verified');
+        await callSync('user', () => syncUser(baseUrl, 'updated', payload, secret), `Synced ${type}`);
         break;
       case 'user.deleted':
         await callSync('user', () => syncUser(baseUrl, 'deleted', payload, secret), 'Deleted user');
@@ -65,16 +106,47 @@ export async function processMessage(
       case 'faculty.created':
         await callSync('faculty', () => syncFaculty(baseUrl, 'created', payload, secret), 'Synced faculty.created');
         break;
+      case 'lte.module_completed':
+      case 'lte.level_completed':
+        throw new Error(`LTE event ${type} delivered to SSO pipeline`);
       default:
         throw new Error(`Unknown event type: ${type}`);
     }
-
-    msg.ack();
-  } catch (err) {
-    const isRetryable = !(err instanceof TypeError);
-    console.error(`[event-processor] Message failed: ${err instanceof Error ? err.message : String(err)} type=${msg.body.type}`);
-    if (isRetryable) msg.retry();
-    else msg.ack();
-  }
+  });
 }
 
+/** LTE pipeline — syncs lte-db events to the Skillpassport internal LTE API. */
+export async function processLteMessage(
+  msg: Message<SyncEvent>,
+  baseUrl: string,
+  lteSecret: string
+): Promise<void> {
+  await runMessage(msg, async (type, payload) => {
+    switch (type) {
+      case 'lte.module_completed':
+      case 'lte.level_completed': {
+        if (!lteSecret) {
+          throw new RetryableError('LTE_INTERNAL_SECRET is required for LTE sync');
+        }
+        await callSync('lte', () => syncLte(baseUrl, payload, lteSecret), `Synced ${type}`);
+        break;
+      }
+      default:
+        throw new Error(`Non-LTE event ${type} delivered to LTE pipeline`);
+    }
+  });
+}
+
+/**
+ * LTE batch — sequential. LTE events carry no cross-message FK ordering, so
+ * unlike the SSO pipeline they don't need the entity/dependent sort.
+ */
+export async function processLteBatch(
+  messages: Message<SyncEvent>[],
+  baseUrl: string,
+  lteSecret: string
+): Promise<void> {
+  for (const msg of messages) {
+    await processLteMessage(msg, baseUrl, lteSecret);
+  }
+}

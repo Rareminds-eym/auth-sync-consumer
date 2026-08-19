@@ -1,11 +1,24 @@
-export type SyncResult =
-  | { success: true }
-  | { success: false; retryable: boolean; error: string };
+/**
+ * SSO sync client — pushes auth-db events to the Skillpassport SSO sync API
+ * (`POST /sync/<entity>` with a plain `Bearer` secret and `{ action, data }`).
+ */
+
+import { SyncResult } from './sync-result';
+
+export type SsoAction =
+  | 'created'
+  | 'updated'
+  | 'deleted'
+  | 'role_changed'
+  | 'status_changed'
+  | 'removed'
+  | 'cancelled'
+  | 'expired';
 
 async function syncEndpoint(
   baseUrl: string,
   path: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -25,23 +38,22 @@ async function syncEndpoint(
   if (!res.ok) {
     let errorMessage = 'Unknown error';
     try {
-      const body = await res.json() as { error?: { code?: string; message?: string } };
+      const body = (await res.json()) as { error?: { code?: string; message?: string } };
       errorMessage = body?.error?.message || `HTTP ${res.status}`;
     } catch {
       const text = await res.text();
       errorMessage = text || `HTTP ${res.status}`;
     }
-    if (res.status === 404) return { success: false, retryable: true, error: errorMessage };
-    if (res.status === 400) return { success: false, retryable: false, error: errorMessage };
-    if (res.status === 409) return { success: false, retryable: true, error: errorMessage };
-    return { success: false, retryable: true, error: errorMessage };
+    // 4xx (client) errors are non-retryable; everything else may recover on retry.
+    const retryable = res.status !== 400;
+    return { success: false, retryable, error: errorMessage };
   }
   return { success: true };
 }
 
 export function syncUser(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -50,7 +62,7 @@ export function syncUser(
 
 export function syncOrg(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -59,7 +71,7 @@ export function syncOrg(
 
 export function syncMembership(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -68,7 +80,7 @@ export function syncMembership(
 
 export function syncSubscription(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -77,7 +89,7 @@ export function syncSubscription(
 
 export function syncFaculty(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {

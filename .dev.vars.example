@@ -1,0 +1,15 @@
+# Auth Sync Consumer - Local Dev Vars
+# Copy this file to `.dev.vars` and fill in real values:
+#   cp .dev.vars.example .dev.vars
+# DANGER: Never commit real secrets. `.dev.vars` is gitignored.
+
+# Base URL of the SkillPassport sync API.
+# Local dev: point at your local sync gateway, e.g. http://127.0.0.1:8788
+SKILLPASSPORT_SYNC_URL="http://127.0.0.1:8788"
+
+# Secret used to authenticate with the SSO sync API
+# (sent as `Authorization: Bearer <secret>` on /sync/* endpoints).
+SYNC_API_SECRET="change-me"
+
+# Secret used to authenticate with the LTE internal sync API.
+LTE_INTERNAL_SECRET="change-me"
