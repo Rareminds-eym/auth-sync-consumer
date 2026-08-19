@@ -6,7 +6,7 @@
  *   - LTE (lte-db-sync-queue)   -> LTE internal API, sequential
  */
 
-import { SyncEvent } from './handlers/types';
+import type { SyncEvent } from './handlers/types';
 import { processMessagesInOrder } from './handlers/message-router';
 import { processSsoMessage, processLteBatch } from './handlers/event-processor';
 

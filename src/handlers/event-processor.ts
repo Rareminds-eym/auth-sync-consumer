@@ -1,5 +1,6 @@
-import { SyncEvent, SyncEventType } from './types';
+import type { SyncEvent, SyncEventType } from './types';
 import { decodeEventBody } from './message-codec';
+import { isRetryable, RetryableError } from './retry-classifier';
 import {
   syncUser,
   syncOrg,
@@ -8,14 +9,7 @@ import {
   syncFaculty,
 } from '../lib/sso-sync-client';
 import { syncLte } from '../lib/lte/lte-sync-client';
-import { SyncResult } from '../lib/sync-result';
-
-export class RetryableError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'RetryableError';
-  }
-}
+import type { SyncResult } from '../lib/sync-result';
 
 async function callSync(label: string, fn: () => Promise<SyncResult>, suffix: string) {
   const result = await fn();
@@ -29,8 +23,9 @@ async function callSync(label: string, fn: () => Promise<SyncResult>, suffix: st
 
 /**
  * Shared message lifecycle: decode the body, hand it to a pipeline handler,
- * then ack or retry. A handler that throws `RetryableError` is retried;
- * anything else is treated as non-retryable and acked (dropped).
+ * then ack or retry. RetryableError and unexpected errors are retried (so they
+ * surface in the DLQ after max_retries instead of being silently dropped);
+ * only `TypeError`s (code bugs a retry can't fix) are acked.
  */
 async function runMessage(
   msg: Message<SyncEvent>,
@@ -48,9 +43,9 @@ async function runMessage(
     await handler(parsed.type, parsed.payload);
     msg.ack();
   } catch (err) {
-    const isRetryable = err instanceof RetryableError;
+    const retry = isRetryable(err);
     console.error(`[event-processor] Message failed: ${err instanceof Error ? err.message : String(err)} type=${parsedType}`);
-    if (isRetryable) msg.retry();
+    if (retry) msg.retry();
     else msg.ack();
   }
 }

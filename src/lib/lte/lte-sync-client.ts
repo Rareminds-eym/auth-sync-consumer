@@ -4,7 +4,7 @@
  * a signed user claim (see ./hmac-token), not the SSO Bearer secret.
  */
 
-import { SyncResult } from '../sync-result';
+import type { SyncResult } from '../sync-result';
 import { generateServiceToken, generateUserClaim } from './hmac-token';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -7,7 +7,7 @@
  *   3. Destructive operations (user.deleted) — must run after dependents
  */
 
-import { SyncEvent } from './types';
+import type { SyncEvent } from './types';
 import { decodeEventBody } from './message-codec';
 
 /**

@@ -6,7 +6,7 @@
  * ever work with one shape.
  */
 
-import { SyncEvent } from './types';
+import type { SyncEvent } from './types';
 
 export async function decodeEventBody(body: unknown): Promise<SyncEvent | null> {
   if (!body) return null;

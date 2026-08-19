@@ -3,7 +3,7 @@
  * (`POST /sync/<entity>` with a plain `Bearer` secret and `{ action, data }`).
  */
 
-import { SyncResult } from './sync-result';
+import type { SyncResult } from './sync-result';
 
 export type SsoAction =
   | 'created'
@@ -36,13 +36,14 @@ async function syncEndpoint(
     return { success: false, retryable: true, error: `Fetch failed: ${err instanceof Error ? err.message : String(err)}` };
   }
   if (!res.ok) {
-    let errorMessage = 'Unknown error';
+    // Read the body once (Response bodies are single-use) and try to parse it.
+    const text = await res.text();
+    let errorMessage = `HTTP ${res.status}`;
     try {
-      const body = (await res.json()) as { error?: { code?: string; message?: string } };
-      errorMessage = body?.error?.message || `HTTP ${res.status}`;
+      const body = JSON.parse(text) as { error?: { code?: string; message?: string } };
+      errorMessage = body?.error?.message || errorMessage;
     } catch {
-      const text = await res.text();
-      errorMessage = text || `HTTP ${res.status}`;
+      errorMessage = text || errorMessage;
     }
     // 4xx (client) errors are non-retryable; everything else may recover on retry.
     const retryable = res.status !== 400;
