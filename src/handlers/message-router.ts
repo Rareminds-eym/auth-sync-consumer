@@ -1,12 +1,14 @@
 /**
- * Message Router for Sync Events
- * Routes messages by FK dependency order to avoid constraint violations:
+ * SSO Message Router
+ * Routes auth-db sync messages by FK dependency order to avoid constraint
+ * violations:
  *   1. Entity creates/updates (users, orgs) — must exist before references
  *   2. Dependent operations (memberships, subscriptions) — reference users/orgs
- *   3. Destructive operations (user.deleted) — must run after dependents are cleaned up
+ *   3. Destructive operations (user.deleted) — must run after dependents
  */
 
-import { SyncEvent, SyncEventType } from './types';
+import type { SyncEvent } from './types';
+import { decodeEventBody } from './message-codec';
 
 /**
  * Sort messages into dependency groups using an exhaustive switch.
@@ -14,15 +16,23 @@ import { SyncEvent, SyncEventType } from './types';
  *
  * Returns: [entityMessages, dependentMessages, destructiveMessages]
  */
-export function sortMessagesByDependency(
+export async function sortMessagesByDependency(
   messages: Message<SyncEvent>[]
-): [Message<SyncEvent>[], Message<SyncEvent>[], Message<SyncEvent>[]] {
+): Promise<[Message<SyncEvent>[], Message<SyncEvent>[], Message<SyncEvent>[]]> {
   const entityMessages: Message<SyncEvent>[] = [];
   const dependentMessages: Message<SyncEvent>[] = [];
   const destructiveMessages: Message<SyncEvent>[] = [];
 
   for (const msg of messages) {
-    const type: SyncEventType = msg.body.type;
+    const parsed = await decodeEventBody(msg.body);
+    const type = parsed?.type;
+
+    if (!type) {
+      console.warn('[message-router] Acking and dropping corrupt/empty queue message:', JSON.stringify(msg.body));
+      msg.ack();
+      continue;
+    }
+
     switch (type) {
       // Group 1: Entity creates/updates — users and orgs must exist first
       case 'user.created':
@@ -43,6 +53,8 @@ export function sortMessagesByDependency(
       case 'subscription.cancelled':
       case 'subscription.expired':
       case 'faculty.created':
+      case 'lte.module_completed':
+      case 'lte.level_completed':
         dependentMessages.push(msg);
         break;
 
@@ -63,7 +75,7 @@ export function sortMessagesByDependency(
 }
 
 /**
- * Process messages in dependency order with sequential processing.
+ * Process a batch of SSO messages in dependency order, sequentially.
  *   1. Entity creates/updates first (users, orgs)
  *   2. Dependent operations second (memberships, subscriptions)
  *   3. Destructive operations last (user.deleted)
@@ -77,25 +89,15 @@ export async function processMessagesInOrder(
   secret: string,
   processMessage: (msg: Message<SyncEvent>, baseUrl: string, secret: string) => Promise<void>
 ): Promise<void> {
-  const [entityMessages, dependentMessages, destructiveMessages] = sortMessagesByDependency(messages);
+  const groups = await sortMessagesByDependency(messages);
 
   console.log(
-    `[message-router] Batch: ${entityMessages.length} entity, ${dependentMessages.length} dependent, ${destructiveMessages.length} destructive`
+    `[message-router] Batch: ${groups[0].length} entity, ${groups[1].length} dependent, ${groups[2].length} destructive`
   );
 
-  // 1. Entity creates/updates — ensure users and orgs exist
-  for (const msg of entityMessages) {
-    await processMessage(msg, baseUrl, secret);
-  }
-
-  // 2. Dependent operations — memberships and subscriptions
-  for (const msg of dependentMessages) {
-    await processMessage(msg, baseUrl, secret);
-  }
-
-  // 3. Destructive operations — user.deleted runs last
-  for (const msg of destructiveMessages) {
-    await processMessage(msg, baseUrl, secret);
+  for (const group of groups) {
+    for (const msg of group) {
+      await processMessage(msg, baseUrl, secret);
+    }
   }
 }
-
