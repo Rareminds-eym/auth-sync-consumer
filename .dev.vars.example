@@ -1,15 +1,26 @@
-# Auth Sync Consumer - Local Dev Vars
-# Copy this file to `.dev.vars` and fill in real values:
+# Local Development Environment Variables — auth-sync-consumer
+# Copy to `.dev.vars` and fill in real values:
 #   cp .dev.vars.example .dev.vars
 # DANGER: Never commit real secrets. `.dev.vars` is gitignored.
 
-# Base URL of the SkillPassport sync API.
+# Base URL of the SkillPassport sync API (local pages dev port).
 # Local dev: point at your local sync gateway, e.g. http://127.0.0.1:8788
 SKILLPASSPORT_SYNC_URL="http://127.0.0.1:8788"
 
 # Secret used to authenticate with the SSO sync API
 # (sent as `Authorization: Bearer <secret>` on /sync/* endpoints).
+# MUST equal skillpassport/.dev.vars INTERNAL_WEBHOOK_SECRET.
 SYNC_API_SECRET="change-me"
 
 # Secret used to authenticate with the LTE internal sync API.
 LTE_INTERNAL_SECRET="change-me"
+
+# Local SkillPassport app DB (optional/if needed for direct access)
+# SUPABASE_URL="http://127.0.0.1:54321"
+# SUPABASE_SERVICE_ROLE_KEY="your_local_app_db_service_role_key"
+
+# ─── Required local topology ───
+# Queues do NOT deliver across separate `wrangler dev` processes.
+# Run sso-worker + this consumer in ONE Miniflare instance via:
+#   cd ../sso-worker && npm run dev:stack
+# then start skillpassport pages separately (npm start).
