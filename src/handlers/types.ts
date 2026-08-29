@@ -16,10 +16,13 @@ export type SyncEventType =
   | 'subscription.created'
   | 'subscription.updated'
   | 'subscription.cancelled'
-  | 'subscription.expired';
+  | 'subscription.expired'
+  | 'faculty.created'
+  | 'lte.module_completed'
+  | 'lte.level_completed';
 
 export interface SyncEvent {
   type: SyncEventType;
   payload: Record<string, unknown>;
-  timestamp: string;
+  timestamp?: string;
 }
