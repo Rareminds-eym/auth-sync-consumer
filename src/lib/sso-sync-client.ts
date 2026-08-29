@@ -1,11 +1,24 @@
-export type SyncResult =
-  | { success: true }
-  | { success: false; retryable: boolean; error: string };
+/**
+ * SSO sync client — pushes auth-db events to the Skillpassport SSO sync API
+ * (`POST /sync/<entity>` with a plain `Bearer` secret and `{ action, data }`).
+ */
+
+import type { SyncResult } from './sync-result';
+
+export type SsoAction =
+  | 'created'
+  | 'updated'
+  | 'deleted'
+  | 'role_changed'
+  | 'status_changed'
+  | 'removed'
+  | 'cancelled'
+  | 'expired';
 
 async function syncEndpoint(
   baseUrl: string,
   path: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -23,25 +36,25 @@ async function syncEndpoint(
     return { success: false, retryable: true, error: `Fetch failed: ${err instanceof Error ? err.message : String(err)}` };
   }
   if (!res.ok) {
-    let errorMessage = 'Unknown error';
+    // Read the body once (Response bodies are single-use) and try to parse it.
+    const text = await res.text();
+    let errorMessage = `HTTP ${res.status}`;
     try {
-      const body = await res.json() as { error?: { code?: string; message?: string } };
-      errorMessage = body?.error?.message || `HTTP ${res.status}`;
+      const body = JSON.parse(text) as { error?: { code?: string; message?: string } };
+      errorMessage = body?.error?.message || errorMessage;
     } catch {
-      const text = await res.text();
-      errorMessage = text || `HTTP ${res.status}`;
+      errorMessage = text || errorMessage;
     }
-    if (res.status === 404) return { success: false, retryable: true, error: errorMessage };
-    if (res.status === 400) return { success: false, retryable: false, error: errorMessage };
-    if (res.status === 409) return { success: false, retryable: true, error: errorMessage };
-    return { success: false, retryable: true, error: errorMessage };
+    // 4xx (client) errors are non-retryable; everything else may recover on retry.
+    const retryable = res.status !== 400;
+    return { success: false, retryable, error: errorMessage };
   }
   return { success: true };
 }
 
 export function syncUser(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -50,7 +63,7 @@ export function syncUser(
 
 export function syncOrg(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -59,7 +72,7 @@ export function syncOrg(
 
 export function syncMembership(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
@@ -68,9 +81,18 @@ export function syncMembership(
 
 export function syncSubscription(
   baseUrl: string,
-  action: string,
+  action: SsoAction,
   data: Record<string, unknown>,
   secret: string
 ): Promise<SyncResult> {
   return syncEndpoint(baseUrl, '/sync/subscription', action, data, secret);
+}
+
+export function syncFaculty(
+  baseUrl: string,
+  action: SsoAction,
+  data: Record<string, unknown>,
+  secret: string
+): Promise<SyncResult> {
+  return syncEndpoint(baseUrl, '/sync/faculty', action, data, secret);
 }
