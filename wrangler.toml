@@ -47,3 +47,27 @@ name = "auth-sync-consumer"
 ENVIRONMENT = "production"
 SKILLPASSPORT_SYNC_URL = "https://skillpassport.rareminds.in"
 
+[[env.production.queues.consumers]]
+queue = "auth-db-sync-queue"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "auth-db-sync-dlq"
+
+[[env.production.queues.consumers]]
+queue = "auth-db-sync-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[[env.production.queues.consumers]]
+queue = "lte-db-sync-queue"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "lte-db-sync-dlq"
+
+[[env.production.queues.consumers]]
+queue = "lte-db-sync-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+
