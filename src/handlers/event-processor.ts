@@ -1,15 +1,15 @@
-import type { SyncEvent, SyncEventType } from './types';
+import { syncLte } from '../lib/lte/lte-sync-client';
+import {
+  syncFaculty,
+  syncMembership,
+  syncOrg,
+  syncSubscription,
+  syncUser,
+} from '../lib/sso-sync-client';
+import type { SyncResult } from '../lib/sync-result';
 import { decodeEventBody } from './message-codec';
 import { isRetryable, RetryableError } from './retry-classifier';
-import {
-  syncUser,
-  syncOrg,
-  syncMembership,
-  syncSubscription,
-  syncFaculty,
-} from '../lib/sso-sync-client';
-import { syncLte } from '../lib/lte/lte-sync-client';
-import type { SyncResult } from '../lib/sync-result';
+import type { SyncEvent, SyncEventType } from './types';
 
 async function callSync(label: string, fn: () => Promise<SyncResult>, suffix: string) {
   const result = await fn();
@@ -73,6 +73,9 @@ export async function processSsoMessage(
         break;
       case 'organization.updated':
         await callSync('org', () => syncOrg(baseUrl, 'updated', payload, secret), 'Synced org.updated');
+        break;
+      case 'organization.deleted':
+        await callSync('org', () => syncOrg(baseUrl, 'deleted', payload, secret), 'Deleted org');
         break;
       case 'membership.created':
         await callSync('membership', () => syncMembership(baseUrl, 'created', payload, secret), 'Synced membership.created');

@@ -7,8 +7,8 @@
  *   3. Destructive operations (user.deleted) — must run after dependents
  */
 
-import type { SyncEvent } from './types';
 import { decodeEventBody } from './message-codec';
+import type { SyncEvent } from './types';
 
 /**
  * Sort messages into dependency groups using an exhaustive switch.
@@ -60,6 +60,7 @@ export async function sortMessagesByDependency(
 
       // Group 3: Destructive — must run after dependents are cleaned up
       case 'user.deleted':
+      case 'organization.deleted':
         destructiveMessages.push(msg);
         break;
 
