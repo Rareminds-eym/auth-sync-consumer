@@ -47,3 +47,38 @@ name = "auth-sync-consumer"
 ENVIRONMENT = "production"
 SKILLPASSPORT_SYNC_URL = "https://skillpassport.rareminds.in"
 
+# ============================================================================
+# DEVELOPMENT -> wrangler deploy --env dev
+# ============================================================================
+
+[env.dev]
+name = "auth-sync-consumer-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+SKILLPASSPORT_SYNC_URL = "https://skillpassport-dev-bcp.pages.dev"
+
+[[env.dev.queues.consumers]]
+queue = "auth-db-sync-queue-dev"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "auth-db-sync-dlq-dev"
+
+[[env.dev.queues.consumers]]
+queue = "auth-db-sync-dlq-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[[env.dev.queues.consumers]]
+queue = "lte-db-sync-queue-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "lte-db-sync-dlq-dev"
+
+[[env.dev.queues.consumers]]
+queue = "lte-db-sync-dlq-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+
