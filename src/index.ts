@@ -14,6 +14,7 @@ export interface Env {
   SKILLPASSPORT_SYNC_URL: string;
   SYNC_API_SECRET: string;
   LTE_INTERNAL_SECRET: string;
+  REVIEW_DLQ_BUCKET?: R2Bucket;
 }
 
 export default {
@@ -29,6 +30,45 @@ export default {
     // Handle dead letter queues (any queue ending in -dlq)
     if (batch.queue.endsWith('-dlq')) {
       for (const msg of batch.messages) {
+        if (batch.queue.startsWith('lte')) {
+          if (!env.REVIEW_DLQ_BUCKET) {
+            msg.retry();
+            continue;
+          }
+          try {
+            await env.REVIEW_DLQ_BUCKET.put(
+              `lte-review-dlq/${msg.id}.json`,
+              JSON.stringify(
+                {
+                  queue: batch.queue,
+                  messageId: msg.id,
+                  body: msg.body,
+                  archivedAt: new Date().toISOString(),
+                },
+                (_key, value) => {
+                  if (value instanceof ArrayBuffer)
+                    return {
+                      type: 'Buffer',
+                      data: Array.from(new Uint8Array(value)),
+                    };
+                  if (ArrayBuffer.isView(value))
+                    return {
+                      type: 'Buffer',
+                      data: Array.from(
+                        new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+                      ),
+                    };
+                  return value;
+                }
+              ),
+              { httpMetadata: { contentType: 'application/json' } }
+            );
+            msg.ack();
+          } catch {
+            msg.retry();
+          }
+          continue;
+        }
         console.error(`[DLQ:${batch.queue}] Unrecoverable message:`, JSON.stringify(msg.body));
         msg.ack();
       }
@@ -44,6 +84,11 @@ export default {
     }
 
     // SSO pipeline: auth-db sync queue, ordered by FK dependency.
-    await processMessagesInOrder([...batch.messages], baseUrl, env.SYNC_API_SECRET, processSsoMessage);
+    await processMessagesInOrder(
+      [...batch.messages],
+      baseUrl,
+      env.SYNC_API_SECRET,
+      processSsoMessage
+    );
   },
 };

@@ -1,3 +1,4 @@
+import { syncReview } from '../lib/lte/review-sync-client';
 import { syncLte } from '../lib/lte/lte-sync-client';
 import {
   syncFaculty,
@@ -29,12 +30,14 @@ async function callSync(label: string, fn: () => Promise<SyncResult>, suffix: st
  */
 async function runMessage(
   msg: Message<SyncEvent>,
-  handler: (type: SyncEventType, payload: Record<string, unknown>) => Promise<void>
+  handler: (type: SyncEventType, payload: Record<string, unknown>) => Promise<void>,
+  retainFailures = false
 ): Promise<void> {
   let parsedType = 'unknown';
   try {
     const parsed = await decodeEventBody(msg.body);
     if (!parsed || !parsed.type) {
+      if (retainFailures) throw new RetryableError('Unparseable LTE message; retain for replay');
       console.warn('[event-processor] Dropping invalid or unparseable message body');
       msg.ack();
       return;
@@ -43,8 +46,10 @@ async function runMessage(
     await handler(parsed.type, parsed.payload);
     msg.ack();
   } catch (err) {
-    const retry = isRetryable(err);
-    console.error(`[event-processor] Message failed: ${err instanceof Error ? err.message : String(err)} type=${parsedType}`);
+    const retry = retainFailures || isRetryable(err);
+    console.error(
+      `[event-processor] Message failed: ${err instanceof Error ? err.message : String(err)} type=${parsedType}`
+    );
     if (retry) msg.retry();
     else msg.ack();
   }
@@ -59,50 +64,102 @@ export async function processSsoMessage(
   await runMessage(msg, async (type, payload) => {
     switch (type) {
       case 'user.created':
-        await callSync('user', () => syncUser(baseUrl, 'created', payload, secret), 'Synced user.created');
+        await callSync(
+          'user',
+          () => syncUser(baseUrl, 'created', payload, secret),
+          'Synced user.created'
+        );
         break;
       case 'user.updated':
       case 'user.email_verified':
-        await callSync('user', () => syncUser(baseUrl, 'updated', payload, secret), `Synced ${type}`);
+        await callSync(
+          'user',
+          () => syncUser(baseUrl, 'updated', payload, secret),
+          `Synced ${type}`
+        );
         break;
       case 'user.deleted':
         await callSync('user', () => syncUser(baseUrl, 'deleted', payload, secret), 'Deleted user');
         break;
       case 'organization.created':
-        await callSync('org', () => syncOrg(baseUrl, 'created', payload, secret), 'Synced org.created');
+        await callSync(
+          'org',
+          () => syncOrg(baseUrl, 'created', payload, secret),
+          'Synced org.created'
+        );
         break;
       case 'organization.updated':
-        await callSync('org', () => syncOrg(baseUrl, 'updated', payload, secret), 'Synced org.updated');
+        await callSync(
+          'org',
+          () => syncOrg(baseUrl, 'updated', payload, secret),
+          'Synced org.updated'
+        );
         break;
       case 'organization.deleted':
         await callSync('org', () => syncOrg(baseUrl, 'deleted', payload, secret), 'Deleted org');
         break;
       case 'membership.created':
-        await callSync('membership', () => syncMembership(baseUrl, 'created', payload, secret), 'Synced membership.created');
+        await callSync(
+          'membership',
+          () => syncMembership(baseUrl, 'created', payload, secret),
+          'Synced membership.created'
+        );
         break;
       case 'membership.role_changed':
-        await callSync('membership', () => syncMembership(baseUrl, 'role_changed', payload, secret), 'Synced role_changed');
+        await callSync(
+          'membership',
+          () => syncMembership(baseUrl, 'role_changed', payload, secret),
+          'Synced role_changed'
+        );
         break;
       case 'membership.status_changed':
-        await callSync('membership', () => syncMembership(baseUrl, 'status_changed', payload, secret), 'Synced status_changed');
+        await callSync(
+          'membership',
+          () => syncMembership(baseUrl, 'status_changed', payload, secret),
+          'Synced status_changed'
+        );
         break;
       case 'membership.removed':
-        await callSync('membership', () => syncMembership(baseUrl, 'removed', payload, secret), 'Removed membership');
+        await callSync(
+          'membership',
+          () => syncMembership(baseUrl, 'removed', payload, secret),
+          'Removed membership'
+        );
         break;
       case 'subscription.created':
-        await callSync('subscription', () => syncSubscription(baseUrl, 'created', payload, secret), 'Synced sub.created');
+        await callSync(
+          'subscription',
+          () => syncSubscription(baseUrl, 'created', payload, secret),
+          'Synced sub.created'
+        );
         break;
       case 'subscription.updated':
-        await callSync('subscription', () => syncSubscription(baseUrl, 'updated', payload, secret), 'Synced sub.updated');
+        await callSync(
+          'subscription',
+          () => syncSubscription(baseUrl, 'updated', payload, secret),
+          'Synced sub.updated'
+        );
         break;
       case 'subscription.cancelled':
-        await callSync('subscription', () => syncSubscription(baseUrl, 'cancelled', payload, secret), 'Synced sub.cancelled');
+        await callSync(
+          'subscription',
+          () => syncSubscription(baseUrl, 'cancelled', payload, secret),
+          'Synced sub.cancelled'
+        );
         break;
       case 'subscription.expired':
-        await callSync('subscription', () => syncSubscription(baseUrl, 'expired', payload, secret), 'Synced sub.expired');
+        await callSync(
+          'subscription',
+          () => syncSubscription(baseUrl, 'expired', payload, secret),
+          'Synced sub.expired'
+        );
         break;
       case 'faculty.created':
-        await callSync('faculty', () => syncFaculty(baseUrl, 'created', payload, secret), 'Synced faculty.created');
+        await callSync(
+          'faculty',
+          () => syncFaculty(baseUrl, 'created', payload, secret),
+          'Synced faculty.created'
+        );
         break;
       case 'lte.module_completed':
       case 'lte.level_completed':
@@ -119,20 +176,38 @@ export async function processLteMessage(
   baseUrl: string,
   lteSecret: string
 ): Promise<void> {
-  await runMessage(msg, async (type, payload) => {
-    switch (type) {
-      case 'lte.module_completed':
-      case 'lte.level_completed': {
-        if (!lteSecret) {
-          throw new RetryableError('LTE_INTERNAL_SECRET is required for LTE sync');
+  await runMessage(
+    msg,
+    async (type, payload) => {
+      switch (type) {
+        case 'lte.review_due_soon':
+        case 'lte.review_overdue':
+        case 'lte.review_assigned':
+        case 'lte.review_completed':
+        case 'lte.artifact_reviewed_pass': {
+          if (!lteSecret)
+            throw new RetryableError('LTE_INTERNAL_SECRET is required for review delivery');
+          try {
+            await syncReview(baseUrl, type, payload, lteSecret);
+          } catch {
+            throw new RetryableError('Review delivery failed; retain for replay');
+          }
+          break;
         }
-        await callSync('lte', () => syncLte(baseUrl, payload, lteSecret), `Synced ${type}`);
-        break;
+        case 'lte.module_completed':
+        case 'lte.level_completed': {
+          if (!lteSecret) {
+            throw new RetryableError('LTE_INTERNAL_SECRET is required for LTE sync');
+          }
+          await callSync('lte', () => syncLte(baseUrl, payload, lteSecret), `Synced ${type}`);
+          break;
+        }
+        default:
+          throw new Error(`Non-LTE event ${type} delivered to LTE pipeline`);
       }
-      default:
-        throw new Error(`Non-LTE event ${type} delivered to LTE pipeline`);
-    }
-  });
+    },
+    true
+  );
 }
 
 /**

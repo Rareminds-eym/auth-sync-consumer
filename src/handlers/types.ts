@@ -20,7 +20,12 @@ export type SyncEventType =
   | 'subscription.expired'
   | 'faculty.created'
   | 'lte.module_completed'
-  | 'lte.level_completed';
+  | 'lte.level_completed'
+  | 'lte.review_due_soon'
+  | 'lte.review_overdue'
+  | 'lte.review_assigned'
+  | 'lte.review_completed'
+  | 'lte.artifact_reviewed_pass';
 
 export interface SyncEvent {
   type: SyncEventType;

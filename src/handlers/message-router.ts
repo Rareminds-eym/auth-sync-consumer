@@ -28,7 +28,10 @@ export async function sortMessagesByDependency(
     const type = parsed?.type;
 
     if (!type) {
-      console.warn('[message-router] Acking and dropping corrupt/empty queue message:', JSON.stringify(msg.body));
+      console.warn(
+        '[message-router] Acking and dropping corrupt/empty queue message:',
+        JSON.stringify(msg.body)
+      );
       msg.ack();
       continue;
     }
@@ -53,6 +56,11 @@ export async function sortMessagesByDependency(
       case 'subscription.cancelled':
       case 'subscription.expired':
       case 'faculty.created':
+      case 'lte.review_due_soon':
+      case 'lte.review_overdue':
+      case 'lte.review_assigned':
+      case 'lte.review_completed':
+      case 'lte.artifact_reviewed_pass':
       case 'lte.module_completed':
       case 'lte.level_completed':
         dependentMessages.push(msg);
