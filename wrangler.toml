@@ -115,3 +115,48 @@ dead_letter_queue = "lte-db-sync-dlq-dev"
 queue = "lte-db-sync-dlq-dev"
 max_batch_size = 10
 max_batch_timeout = 5
+
+# ============================================================================
+# QA -> wrangler deploy --env qa
+# ============================================================================
+
+[env.qa]
+name = "auth-sync-consumer-qa"
+
+[env.qa.vars]
+ENVIRONMENT = "qa"
+# Planned QA Pages URL: verify against the actual Pages project before deployment.
+# QA SkillPassport must use the existing dev database.
+SKILLPASSPORT_SYNC_URL = "https://skillpassport-qa.pages.dev"
+
+[[env.qa.r2_buckets]]
+binding = "REVIEW_DLQ_BUCKET"
+bucket_name = "lte-review-deadletters-qa"
+
+[[env.qa.queues.consumers]]
+queue = "auth-db-sync-queue-qa"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "auth-db-sync-dlq-qa"
+
+[[env.qa.queues.consumers]]
+queue = "auth-db-sync-dlq-qa"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[[env.qa.queues.consumers]]
+queue = "lte-db-sync-queue-qa"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "lte-db-sync-dlq-qa"
+
+[[env.qa.queues.consumers]]
+queue = "lte-db-sync-dlq-qa"
+max_batch_size = 10
+max_batch_timeout = 5
+
+# Set SYNC_API_SECRET to QA SkillPassport's INTERNAL_WEBHOOK_SECRET.
+# Set LTE_INTERNAL_SECRET to QA SkillPassport's LTE_INTERNAL_SECRET.
+# Use: wrangler secret put <SECRET_NAME> --env qa
