@@ -8,6 +8,7 @@ import type { SyncResult } from './sync-result';
 export type SsoAction =
   | 'created'
   | 'updated'
+  | 'email_verified'
   | 'deleted'
   | 'role_changed'
   | 'status_changed'

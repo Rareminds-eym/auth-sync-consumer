@@ -70,8 +70,10 @@ export async function processSsoMessage(
           'Synced user.created'
         );
         break;
-      case 'user.updated':
       case 'user.email_verified':
+        await callSync('user', () => syncUser(baseUrl, 'email_verified', payload, secret), 'Synced user.email_verified');
+        break;
+      case 'user.updated':
         await callSync(
           'user',
           () => syncUser(baseUrl, 'updated', payload, secret),
