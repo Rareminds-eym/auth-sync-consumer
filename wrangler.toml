@@ -1,4 +1,5 @@
 name = "auth-sync-consumer"
+
 main = "src/index.ts"
 compatibility_date = "2026-05-28"
 compatibility_flags = ["nodejs_compat"]
@@ -160,3 +161,83 @@ max_batch_timeout = 5
 # Set SYNC_API_SECRET to QA SkillPassport's INTERNAL_WEBHOOK_SECRET.
 # Set LTE_INTERNAL_SECRET to QA SkillPassport's LTE_INTERNAL_SECRET.
 # Use: wrangler secret put <SECRET_NAME> --env qa
+# Required secrets: LTE_CATALOG_SYNC_SECRET; set LTE_APP_URL per environment.
+[triggers]
+crons = ["*/2 * * * *"]
+
+[env.production.triggers]
+crons = ["*/2 * * * *"]
+
+[env.dev.triggers]
+crons = ["*/2 * * * *"]
+
+[[queues.producers]]
+binding = "LEARNING_MAINTENANCE_QUEUE"
+queue = "learning-maintenance"
+
+[[queues.consumers]]
+queue = "learning-maintenance"
+max_batch_size = 1
+max_batch_timeout = 1
+max_concurrency = 4
+max_retries = 5
+dead_letter_queue = "learning-maintenance-dlq"
+
+[[queues.consumers]]
+queue = "learning-maintenance-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[[env.production.queues.producers]]
+binding = "LEARNING_MAINTENANCE_QUEUE"
+queue = "learning-maintenance"
+
+[[env.production.queues.consumers]]
+queue = "learning-maintenance"
+max_batch_size = 1
+max_batch_timeout = 1
+max_concurrency = 4
+max_retries = 5
+dead_letter_queue = "learning-maintenance-dlq"
+
+[[env.production.queues.consumers]]
+queue = "learning-maintenance-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[[env.dev.queues.producers]]
+binding = "LEARNING_MAINTENANCE_QUEUE"
+queue = "learning-maintenance-dev"
+
+[[env.dev.queues.consumers]]
+queue = "learning-maintenance-dev"
+max_batch_size = 1
+max_batch_timeout = 1
+max_concurrency = 4
+max_retries = 5
+dead_letter_queue = "learning-maintenance-dev-dlq"
+
+[[env.dev.queues.consumers]]
+queue = "learning-maintenance-dev-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[env.qa.triggers]
+crons = ["*/2 * * * *"]
+
+[[env.qa.queues.producers]]
+binding = "LEARNING_MAINTENANCE_QUEUE"
+queue = "learning-maintenance-qa"
+
+[[env.qa.queues.consumers]]
+queue = "learning-maintenance-qa"
+max_batch_size = 1
+max_batch_timeout = 1
+max_concurrency = 4
+max_retries = 5
+dead_letter_queue = "learning-maintenance-qa-dlq"
+
+[[env.qa.queues.consumers]]
+queue = "learning-maintenance-qa-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
