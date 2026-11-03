@@ -3,6 +3,7 @@
  */
 
 export type SyncEventType =
+  | 'zoho.candidate.canonical_committed'
   | 'user.created'
   | 'user.updated'
   | 'user.email_verified'
