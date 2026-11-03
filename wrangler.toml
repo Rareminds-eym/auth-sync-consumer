@@ -1,4 +1,5 @@
 name = "auth-sync-consumer"
+
 main = "src/index.ts"
 compatibility_date = "2026-05-28"
 compatibility_flags = ["nodejs_compat"]
@@ -47,10 +48,20 @@ name = "auth-sync-consumer"
 ENVIRONMENT = "production"
 SKILLPASSPORT_SYNC_URL = "https://skillpassport.rareminds.in"
 
+# Create the private bucket before deploying this consumer revision.
+[[r2_buckets]]
+binding = "REVIEW_DLQ_BUCKET"
+bucket_name = "lte-review-deadletters"
+
+[[env.production.r2_buckets]]
+binding = "REVIEW_DLQ_BUCKET"
+bucket_name = "lte-review-deadletters"
+
+# Queue bindings are explicit for the production environment.
 [[env.production.queues.consumers]]
 queue = "auth-db-sync-queue"
 max_batch_size = 10
-max_batch_timeout = 1
+max_batch_timeout = 1  # Fast login sync (1s), messages processed sequentially in consumer
 max_retries = 3
 dead_letter_queue = "auth-db-sync-dlq"
 
@@ -71,3 +82,98 @@ queue = "lte-db-sync-dlq"
 max_batch_size = 10
 max_batch_timeout = 5
 
+# ============================================================================
+# DEVELOPMENT -> wrangler deploy --env dev
+# ============================================================================
+
+[env.dev]
+name = "auth-sync-consumer-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+SKILLPASSPORT_SYNC_URL = "https://skillpassport-dev-bcp.pages.dev"
+
+[[env.dev.queues.consumers]]
+queue = "auth-db-sync-queue-dev"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "auth-db-sync-dlq-dev"
+
+[[env.dev.queues.consumers]]
+queue = "auth-db-sync-dlq-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[[env.dev.queues.consumers]]
+queue = "lte-db-sync-queue-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "lte-db-sync-dlq-dev"
+
+[[env.dev.queues.consumers]]
+queue = "lte-db-sync-dlq-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+
+# Required secrets: LTE_CATALOG_SYNC_SECRET; set LTE_APP_URL per environment.
+[triggers]
+crons = ["*/2 * * * *"]
+
+[env.production.triggers]
+crons = ["*/2 * * * *"]
+
+[env.dev.triggers]
+crons = ["*/2 * * * *"]
+
+[[queues.producers]]
+binding = "LEARNING_MAINTENANCE_QUEUE"
+queue = "learning-maintenance"
+
+[[queues.consumers]]
+queue = "learning-maintenance"
+max_batch_size = 1
+max_batch_timeout = 1
+max_concurrency = 4
+max_retries = 5
+dead_letter_queue = "learning-maintenance-dlq"
+
+[[queues.consumers]]
+queue = "learning-maintenance-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[[env.production.queues.producers]]
+binding = "LEARNING_MAINTENANCE_QUEUE"
+queue = "learning-maintenance"
+
+[[env.production.queues.consumers]]
+queue = "learning-maintenance"
+max_batch_size = 1
+max_batch_timeout = 1
+max_concurrency = 4
+max_retries = 5
+dead_letter_queue = "learning-maintenance-dlq"
+
+[[env.production.queues.consumers]]
+queue = "learning-maintenance-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[[env.dev.queues.producers]]
+binding = "LEARNING_MAINTENANCE_QUEUE"
+queue = "learning-maintenance-dev"
+
+[[env.dev.queues.consumers]]
+queue = "learning-maintenance-dev"
+max_batch_size = 1
+max_batch_timeout = 1
+max_concurrency = 4
+max_retries = 5
+dead_letter_queue = "learning-maintenance-dev-dlq"
+
+[[env.dev.queues.consumers]]
+queue = "learning-maintenance-dev-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
