@@ -6,6 +6,8 @@
  *   - LTE (lte-db-sync-queue)   -> LTE internal API, sequential
  */
 
+import { decodeEventBody } from './handlers/message-codec';
+import { candidateReference } from './lib/zoho-candidate-delivery';
 import type { SyncEvent } from './handlers/types';
 import { processMessagesInOrder } from './handlers/message-router';
 import { processSsoMessage, processLteBatch } from './handlers/event-processor';
@@ -37,6 +39,18 @@ export default {
     // Handle dead letter queues, including dev and QA environment suffixes.
     if (/-dlq(?:-(?:dev|qa))?$/.test(batch.queue)) {
       for (const msg of batch.messages) {
+        const failed = await decodeEventBody(msg.body);
+        if (failed?.type === 'zoho.candidate.canonical_committed') {
+          // Retain reference-only diagnostics; never silently discard a failed projection.
+          if (!env.REVIEW_DLQ_BUCKET) { msg.retry(); continue; }
+          try {
+            await env.REVIEW_DLQ_BUCKET.put(`zoho-review-dlq/${msg.id}.json`, JSON.stringify({ queue: batch.queue,
+              messageId: msg.id, archivedAt: new Date().toISOString(),
+              reference: candidateReference(failed.payload) ? failed.payload : null, reason: 'PROJECTION_UNCONFIRMED' }));
+            msg.ack();
+          } catch { msg.retry(); }
+          continue;
+        }
         if (batch.queue.startsWith('lte')||batch.queue.startsWith('learning-maintenance')) {
           if (!env.REVIEW_DLQ_BUCKET) {
             msg.retry();

@@ -1,4 +1,4 @@
-import {test,afterEach} from 'node:test';
+import {test,afterEach} from 'vitest';
 import assert from 'node:assert/strict';
 import {runLearningMaintenance} from '../src/learning-maintenance';
 import worker from '../src/index';
