@@ -36,8 +36,8 @@ export default {
   },
 
   async queue(batch: MessageBatch<SyncEvent>, env: Env): Promise<void> {
-    // Handle dead letter queues (any queue ending in -dlq)
-    if (batch.queue.endsWith('-dlq')) {
+    // Handle dead letter queues, including dev and QA environment suffixes.
+    if (/-dlq(?:-(?:dev|qa))?$/.test(batch.queue)) {
       for (const msg of batch.messages) {
         const failed = await decodeEventBody(msg.body);
         if (failed?.type === 'zoho.candidate.canonical_committed') {
