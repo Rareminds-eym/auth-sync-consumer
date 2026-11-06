@@ -47,6 +47,7 @@ export async function sortMessagesByDependency(
         break;
 
       // Group 2: Dependent operations — these reference users/orgs via FK
+      case 'zoho.candidate.canonical_committed':
       case 'membership.created':
       case 'membership.role_changed':
       case 'membership.status_changed':
