@@ -1,3 +1,4 @@
+import { deliverCandidateProjection } from '../lib/zoho-candidate-delivery';
 import { syncReview } from '../lib/lte/review-sync-client';
 import { syncLte } from '../lib/lte/lte-sync-client';
 import {
@@ -26,7 +27,7 @@ async function callSync(label: string, fn: () => Promise<SyncResult>, suffix: st
  * Shared message lifecycle: decode the body, hand it to a pipeline handler,
  * then ack or retry. RetryableError and unexpected errors are retried (so they
  * surface in the DLQ after max_retries instead of being silently dropped);
- * only `TypeError`s (code bugs a retry can't fix) are acked.
+ * legacy SSO TypeErrors are acked; candidate projections retain every failure.
  */
 async function runMessage(
   msg: Message<SyncEvent>,
@@ -46,7 +47,7 @@ async function runMessage(
     await handler(parsed.type, parsed.payload);
     msg.ack();
   } catch (err) {
-    const retry = retainFailures || isRetryable(err);
+    const retry = retainFailures || parsedType === 'zoho.candidate.canonical_committed' || isRetryable(err);
     console.error(
       `[event-processor] Message failed: ${err instanceof Error ? err.message : String(err)} type=${parsedType}`
     );
@@ -63,6 +64,9 @@ export async function processSsoMessage(
 ): Promise<void> {
   await runMessage(msg, async (type, payload) => {
     switch (type) {
+      case 'zoho.candidate.canonical_committed':
+        await deliverCandidateProjection(baseUrl, secret, payload);
+        break;
       case 'user.created':
         await callSync(
           'user',

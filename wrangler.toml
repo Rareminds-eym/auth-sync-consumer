@@ -93,6 +93,11 @@ name = "auth-sync-consumer-dev"
 ENVIRONMENT = "development"
 SKILLPASSPORT_SYNC_URL = "https://skillpassport-dev-bcp.pages.dev"
 
+# Bindings are not inherited; keep development dead letters separate from production.
+[[env.dev.r2_buckets]]
+binding = "REVIEW_DLQ_BUCKET"
+bucket_name = "lte-review-deadletters-dev"
+
 [[env.dev.queues.consumers]]
 queue = "auth-db-sync-queue-dev"
 max_batch_size = 10
