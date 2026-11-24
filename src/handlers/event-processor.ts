@@ -5,6 +5,7 @@ import {
   syncFaculty,
   syncMembership,
   syncOrg,
+  syncPlan,
   syncSubscription,
   syncUser,
 } from '../lib/sso-sync-client';
@@ -64,6 +65,9 @@ export async function processSsoMessage(
 ): Promise<void> {
   await runMessage(msg, async (type, payload) => {
     switch (type) {
+      case 'plan.updated':
+        await callSync('plan', () => syncPlan(baseUrl, payload, secret), 'Synced plan.updated');
+        break;
       case 'zoho.candidate.canonical_committed':
         await deliverCandidateProjection(baseUrl, secret, payload);
         break;

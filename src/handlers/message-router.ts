@@ -38,6 +38,7 @@ export async function sortMessagesByDependency(
 
     switch (type) {
       // Group 1: Entity creates/updates — users and orgs must exist first
+      case 'plan.updated':
       case 'user.created':
       case 'user.updated':
       case 'user.email_verified':
