@@ -61,6 +61,10 @@ export function syncUser(
   return syncEndpoint(baseUrl, '/sync/user', action, data, secret);
 }
 
+export function syncPlan(baseUrl: string, data: Record<string, unknown>, secret: string): Promise<SyncResult> {
+  return syncEndpoint(baseUrl, '/sync/plan', 'updated', data, secret);
+}
+
 export function syncOrg(
   baseUrl: string,
   action: SsoAction,
